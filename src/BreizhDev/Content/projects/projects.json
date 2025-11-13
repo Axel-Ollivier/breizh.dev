@@ -1,0 +1,29 @@
+[
+  {
+    "slug": "projet-exemple-1",
+    "title": "[Titre du projet 1]",
+    "description": "[Description courte du projet — ce qu'il fait et pourquoi il existe.]",
+    "tags": ["Blazor", ".NET"],
+    "gitHubUrl": "https://github.com/[utilisateur]/[repo]",
+    "demoUrl": null,
+    "imageUrl": null
+  },
+  {
+    "slug": "projet-exemple-2",
+    "title": "[Titre du projet 2]",
+    "description": "[Description courte du projet — ce qu'il fait et pourquoi il existe.]",
+    "tags": ["TypeScript", "React"],
+    "gitHubUrl": "https://github.com/[utilisateur]/[repo]",
+    "demoUrl": "https://[url-de-la-demo]",
+    "imageUrl": null
+  },
+  {
+    "slug": "projet-exemple-3",
+    "title": "[Titre du projet 3]",
+    "description": "[Description courte du projet — ce qu'il fait et pourquoi il existe.]",
+    "tags": ["Python", "API"],
+    "gitHubUrl": null,
+    "demoUrl": null,
+    "imageUrl": null
+  }
+]

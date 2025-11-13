@@ -1,0 +1,32 @@
+<section class="hero-section">
+    <MudContainer MaxWidth="MaxWidth.Large">
+        <a href="/" class="hero-back-link animate-slide">
+            <MudIcon Icon="@Icons.Material.Filled.ArrowBack" Size="Size.Small" />
+            breizh.dev
+        </a>
+        <MudStack Spacing="2">
+            <div class="accent-line-static animate-in anim-delay-1"></div>
+            <MudText Typo="Typo.h1" Class="hero-title animate-reveal anim-delay-2">
+                @Title
+            </MudText>
+            @if (!string.IsNullOrEmpty(Subtitle))
+            {
+                <MudText Typo="Typo.body1" Class="hero-subtitle animate-in anim-delay-3">
+                    @Subtitle
+                </MudText>
+            }
+            @if (ChildContent is not null)
+            {
+                <div class="animate-in anim-delay-4">
+                    @ChildContent
+                </div>
+            }
+        </MudStack>
+    </MudContainer>
+</section>
+
+@code {
+    [Parameter] public string Title { get; set; } = string.Empty;
+    [Parameter] public string? Subtitle { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

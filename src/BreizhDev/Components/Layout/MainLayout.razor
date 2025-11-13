@@ -1,0 +1,48 @@
+@inherits LayoutComponentBase
+@inject IJSRuntime JS
+
+<MudThemeProvider @ref="_themeProvider" Theme="BreizhDev.Theme.BreizhDevTheme.Create()"
+                  @bind-IsDarkMode="_isDarkMode" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<MudLayout>
+    <MudMainContent Class="main-content">
+        @Body
+    </MudMainContent>
+
+    <footer class="footer">
+        <MudContainer MaxWidth="MaxWidth.Large">
+            <MudStack Row Justify="Justify.Center" AlignItems="AlignItems.Center" Class="py-4">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                    &copy; @DateTime.Now.Year Axel Ollivier
+                </MudText>
+            </MudStack>
+        </MudContainer>
+    </footer>
+</MudLayout>
+
+<div class="theme-toggle-float">
+    <ThemeToggle IsDarkMode="_isDarkMode" OnToggle="ToggleTheme" />
+</div>
+
+@code {
+    private MudThemeProvider _themeProvider = null!;
+    private bool _isDarkMode;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _isDarkMode = await JS.InvokeAsync<bool>("eval", "localStorage.getItem('darkMode') === 'true'");
+            StateHasChanged();
+        }
+    }
+
+    private async Task ToggleTheme()
+    {
+        _isDarkMode = !_isDarkMode;
+        await JS.InvokeVoidAsync("eval", $"localStorage.setItem('darkMode', '{_isDarkMode.ToString().ToLower()}')");
+    }
+}

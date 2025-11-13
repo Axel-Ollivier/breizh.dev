@@ -1,0 +1,12 @@
+<MudIconButton Icon="@(_isDark ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
+               Color="Color.Inherit"
+               OnClick="OnToggle"
+               Size="Size.Small"
+               aria-label="Changer le thème" />
+
+@code {
+    [Parameter] public bool IsDarkMode { get; set; }
+    [Parameter] public EventCallback OnToggle { get; set; }
+
+    private bool _isDark => IsDarkMode;
+}

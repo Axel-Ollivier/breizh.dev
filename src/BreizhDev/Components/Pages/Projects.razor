@@ -1,0 +1,67 @@
+@page "/projects"
+@inject ContentService ContentService
+
+<PageTitle>Projets — breizh.dev</PageTitle>
+<HeadContent>
+    <meta name="description"
+          content="Découvrez mes projets de développement — applications, outils et contributions open source." />
+</HeadContent>
+
+<HeroSection Title="Projets" Subtitle="Applications, outils et contributions open source." />
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="py-12">
+    @if (_allTags.Count > 0)
+    {
+        <MudStack Row Wrap="Wrap.Wrap" Spacing="1" Class="mb-8 animate-in">
+            <MudChip T="string" Size="Size.Small" Variant="@(_selectedTag is null ? Variant.Filled : Variant.Outlined)"
+                     Color="Color.Primary" OnClick="() => FilterByTag(null)">
+                Tous
+            </MudChip>
+            @foreach (var tag in _allTags)
+            {
+                <MudChip T="string" Size="Size.Small" Variant="@(_selectedTag == tag ? Variant.Filled : Variant.Outlined)"
+                         Color="Color.Primary" OnClick="() => FilterByTag(tag)">
+                    @tag
+                </MudChip>
+            }
+        </MudStack>
+    }
+
+    <MudGrid Spacing="4">
+        @foreach (var (project, i) in _filteredProjects.Select((p, i) => (p, i)))
+        {
+            <MudItem xs="12" sm="6" md="4" Class="animate-scale" Style="@($"animation-delay: {i * 0.08}s;")">
+                <ProjectCard Project="project" />
+            </MudItem>
+        }
+    </MudGrid>
+
+    @if (_filteredProjects.Count == 0)
+    {
+        <MudText Typo="Typo.body1" Color="Color.Secondary" Align="Align.Center" Class="py-12">
+            Aucun projet trouvé pour ce filtre.
+        </MudText>
+    }
+</MudContainer>
+
+@code {
+    private List<Project> _allProjects = [];
+    private List<Project> _filteredProjects = [];
+    private List<string> _allTags = [];
+    private string? _selectedTag;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _allProjects = await ContentService.GetProjectsAsync();
+        _filteredProjects = _allProjects;
+        _allTags = _allProjects.SelectMany(p => p.Tags).Distinct().OrderBy(t => t).ToList();
+    }
+
+    private void FilterByTag(string? tag)
+    {
+        _selectedTag = tag;
+        _filteredProjects = tag is null
+            ? _allProjects
+            : _allProjects.Where(p => p.Tags.Contains(tag)).ToList();
+    }
+}

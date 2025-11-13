@@ -1,0 +1,11 @@
+<MudChip T="string"
+         Size="Size.Small"
+         Variant="Variant.Outlined"
+         Color="Color.Primary"
+         Class="tag-badge">
+    @Tag
+</MudChip>
+
+@code {
+    [Parameter, EditorRequired] public string Tag { get; set; } = string.Empty;
+}

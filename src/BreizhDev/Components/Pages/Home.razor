@@ -1,0 +1,45 @@
+@page "/"
+
+<PageTitle>breizh.dev</PageTitle>
+<HeadContent>
+    <meta name="description" content="Portail développeur — découvrez mes projets et réalisations." />
+</HeadContent>
+
+<section class="hero-landing">
+    <MudContainer MaxWidth="MaxWidth.Medium">
+        <MudStack Spacing="4">
+            <div class="accent-line"></div>
+
+            <MudText Class="title-massive animate-reveal anim-delay-1">
+                breizh<span class="title-dot">.</span>dev<span class="cursor-blink"></span>
+            </MudText>
+
+            <MudText Class="description-text animate-in anim-delay-3">
+                Développeur passionné, je conçois des applications web modernes.
+                Explorez mes projets et retrouvez-moi ci-dessous.
+            </MudText>
+
+            <div class="social-links animate-in anim-delay-4">
+                <a href="https://github.com/Axel-Ollivier" target="_blank" class="social-link" aria-label="GitHub">
+                    <MudIcon Icon="@Icons.Custom.Brands.GitHub" Size="Size.Small" />
+                </a>
+                <a href="https://linkedin.com/in/axel-ollivier" target="_blank" class="social-link"
+                       aria-label="LinkedIn">
+                    <MudIcon Icon="@Icons.Custom.Brands.LinkedIn" Size="Size.Small" />
+                </a>
+            </div>
+
+            <div class="badges-area animate-in anim-delay-5">
+                @* Ajoutez vos badges shields.io ou autres ici *@
+                @* <span class="badge-slot">badge</span> *@
+                @* <span class="badge-slot">badge</span> *@
+                @* <span class="badge-slot">badge</span> *@
+            </div>
+
+            <nav class="page-nav animate-in anim-delay-6">
+                @* <a href="/projects" class="page-nav-link">projets</a> *@
+                @* <a href="/about" class="page-nav-link">à propos</a> *@
+            </nav>
+        </MudStack>
+    </MudContainer>
+</section>

@@ -1,0 +1,48 @@
+@inject NavigationManager Navigation
+
+<MudAppBar Elevation="0" Class="appbar-clean">
+    <MudContainer MaxWidth="MaxWidth.Large">
+        <MudStack Row Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Style="width: 100%;">
+            <MudLink Href="/" Underline="Underline.None" Color="Color.Inherit">
+                <MudText Typo="Typo.h6" Class="logo-text">breizh.dev</MudText>
+            </MudLink>
+
+            <MudHidden Breakpoint="Breakpoint.SmAndDown">
+                <MudStack Row Spacing="1" AlignItems="AlignItems.Center">
+                    <MudButton Href="/" Color="Color.Inherit" Variant="Variant.Text" Class="nav-link">Accueil
+                    </MudButton>
+                    <MudButton Href="/projects" Color="Color.Inherit" Variant="Variant.Text" Class="nav-link">Projets
+                    </MudButton>
+                    <MudButton Href="/about" Color="Color.Inherit" Variant="Variant.Text" Class="nav-link">À propos
+                    </MudButton>
+                    <ThemeToggle IsDarkMode="IsDarkMode" OnToggle="OnToggleTheme" />
+                </MudStack>
+            </MudHidden>
+
+            <MudHidden Breakpoint="Breakpoint.MdAndUp">
+                <MudStack Row AlignItems="AlignItems.Center">
+                    <ThemeToggle IsDarkMode="IsDarkMode" OnToggle="OnToggleTheme" />
+                    <MudIconButton Icon="@Icons.Material.Filled.Menu"                  Color="Color.Inherit"             OnClick="ToggleDrawer"
+                                   aria-label="Menu" />
+                </MudStack>
+            </MudHidden>
+        </MudStack>
+    </MudContainer>
+</MudAppBar>
+
+<MudDrawer @bind-Open="_drawerOpen" Anchor="Anchor.Right" Elevation="1" Variant="DrawerVariant.Temporary">
+    <MudNavMenu Class="pa-4">
+        <MudNavLink Href="/" Icon="@Icons.Material.Filled.Home">Accueil</MudNavLink>
+        <MudNavLink Href="/projects" Icon="@Icons.Material.Filled.Code">Projets</MudNavLink>
+        <MudNavLink Href="/about" Icon="@Icons.Material.Filled.Person">À propos</MudNavLink>
+    </MudNavMenu>
+</MudDrawer>
+
+@code {
+    [Parameter] public bool IsDarkMode { get; set; }
+    [Parameter] public EventCallback OnToggleTheme { get; set; }
+
+    private bool _drawerOpen;
+
+    private void ToggleDrawer() => _drawerOpen = !_drawerOpen;
+}

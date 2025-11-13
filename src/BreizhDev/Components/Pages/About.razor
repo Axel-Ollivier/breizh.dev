@@ -1,0 +1,33 @@
+@page "/about"
+
+<PageTitle>À propos — breizh.dev</PageTitle>
+<HeadContent>
+    <meta name="description" content="En savoir plus sur le développeur derrière breizh.dev." />
+</HeadContent>
+
+<HeroSection Title="À propos" Subtitle="Quelques mots sur moi et ce que je fais." />
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="py-12">
+    <MudStack Spacing="4">
+        <MudText Typo="Typo.body1" Class="animate-in anim-delay-4">
+            [Présentation personnelle — décrivez votre parcours, vos compétences et ce qui vous motive.]
+        </MudText>
+
+        <MudText Typo="Typo.overline" Class="mt-6 section-label animate-in anim-delay-5">Compétences</MudText>
+        <MudStack Row Wrap="Wrap.Wrap" Spacing="1" Class="animate-in anim-delay-6">
+            <TagBadge Tag="[Compétence 1]" />
+            <TagBadge Tag="[Compétence 2]" />
+            <TagBadge Tag="[Compétence 3]" />
+            <TagBadge Tag="[Compétence 4]" />
+            <TagBadge Tag="[Compétence 5]" />
+        </MudStack>
+
+        <MudText Typo="Typo.overline" Class="mt-6 section-label animate-in anim-delay-7">Contact</MudText>
+        <MudText Typo="Typo.body1" Class="animate-in anim-delay-8">
+            [Ajoutez vos coordonnées ou liens de contact ici.]
+        </MudText>
+    </MudStack>
+</MudContainer>
+
+@code {
+}
