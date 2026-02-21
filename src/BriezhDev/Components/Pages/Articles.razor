@@ -1,0 +1,70 @@
+@page "/articles"
+@inject ContentService ContentService
+
+<PageTitle>Articles — breizh.dev</PageTitle>
+<HeadContent>
+    <meta name="description" content="Articles techniques, tutoriels et retours d'expérience sur le développement." />
+</HeadContent>
+
+<HeroSection Title="Articles" Subtitle="Réflexions techniques, tutoriels et retours d'expérience." />
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="py-8">
+    @if (_allTags.Count > 0)
+    {
+        <MudStack Row Wrap="Wrap.Wrap" Spacing="1" Class="mb-6">
+            <MudChip T="string"
+                     Size="Size.Small"
+                     Variant="@(_selectedTag is null ? Variant.Filled : Variant.Outlined)"
+                     Color="Color.Primary"
+                     OnClick="() => FilterByTag(null)">
+                Tous
+            </MudChip>
+            @foreach (var tag in _allTags)
+            {
+                <MudChip T="string"
+                         Size="Size.Small"
+                         Variant="@(_selectedTag == tag ? Variant.Filled : Variant.Outlined)"
+                         Color="Color.Primary"
+                         OnClick="() => FilterByTag(tag)">
+                    @tag
+                </MudChip>
+            }
+        </MudStack>
+    }
+
+    <MudStack Spacing="3">
+        @foreach (var article in _filteredArticles)
+        {
+            <ArticleCard Article="article" />
+        }
+    </MudStack>
+
+    @if (_filteredArticles.Count == 0)
+    {
+        <MudText Typo="Typo.body1" Color="Color.Secondary" Align="Align.Center" Class="py-8">
+            Aucun article trouvé pour ce filtre.
+        </MudText>
+    }
+</MudContainer>
+
+@code {
+    private List<Article> _allArticles = [];
+    private List<Article> _filteredArticles = [];
+    private List<string> _allTags = [];
+    private string? _selectedTag;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _allArticles = await ContentService.GetArticlesAsync();
+        _filteredArticles = _allArticles;
+        _allTags = _allArticles.SelectMany(a => a.Tags).Distinct().OrderBy(t => t).ToList();
+    }
+
+    private void FilterByTag(string? tag)
+    {
+        _selectedTag = tag;
+        _filteredArticles = tag is null
+            ? _allArticles
+            : _allArticles.Where(a => a.Tags.Contains(tag)).ToList();
+    }
+}

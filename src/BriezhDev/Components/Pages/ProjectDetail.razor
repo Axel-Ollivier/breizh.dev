@@ -1,0 +1,88 @@
+@page "/projects/{Slug}"
+@inject ContentService ContentService
+@inject NavigationManager Navigation
+
+<PageTitle>@(_project?.Title ?? "Projet") — breizh.dev</PageTitle>
+<HeadContent>
+    <meta name="description" content="@(_project?.Description ?? "Détail du projet")" />
+</HeadContent>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="py-8">
+    @if (_project is null)
+    {
+        <MudText Typo="Typo.body1" Color="Color.Secondary">Projet non trouvé.</MudText>
+        <MudButton Href="/projects" Variant="Variant.Text" Color="Color.Primary" Class="mt-4">
+            Retour aux projets
+        </MudButton>
+    }
+    else
+    {
+        <MudButton Href="/projects"
+                   StartIcon="@Icons.Material.Filled.ArrowBack"
+                   Variant="Variant.Text"
+                   Color="Color.Default"
+                   Class="mb-4">
+            Retour aux projets
+        </MudButton>
+
+        @if (!string.IsNullOrEmpty(_project.ImageUrl))
+        {
+            <MudImage Src="@_project.ImageUrl"
+                      Alt="@_project.Title"
+                      ObjectFit="ObjectFit.Cover"
+                      Class="rounded mb-6"
+                      Style="width: 100%; max-height: 400px;" />
+        }
+
+        <MudText Typo="Typo.h3" Class="mb-2">@_project.Title</MudText>
+        <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mb-4">@_project.Description</MudText>
+
+        <MudStack Row Wrap="Wrap.Wrap" Spacing="1" Class="mb-4">
+            @foreach (var tag in _project.Tags)
+            {
+                <TagBadge Tag="@tag" />
+            }
+        </MudStack>
+
+        <MudStack Row Spacing="2" Class="mb-6">
+            @if (!string.IsNullOrEmpty(_project.GitHubUrl))
+            {
+                <MudButton Href="@_project.GitHubUrl"
+                           Target="_blank"
+                           StartIcon="@Icons.Custom.Brands.GitHub"
+                           Variant="Variant.Outlined"
+                           Color="Color.Default">
+                    Voir sur GitHub
+                </MudButton>
+            }
+            @if (!string.IsNullOrEmpty(_project.DemoUrl))
+            {
+                <MudButton Href="@_project.DemoUrl"
+                           Target="_blank"
+                           StartIcon="@Icons.Material.Filled.OpenInNew"
+                           Variant="Variant.Filled"
+                           Color="Color.Primary">
+                    Voir la démo
+                </MudButton>
+            }
+        </MudStack>
+
+        @if (!string.IsNullOrEmpty(_project.HtmlContent))
+        {
+            <MudPaper Elevation="0" Class="pa-0 markdown-content">
+                @((MarkupString)_project.HtmlContent)
+            </MudPaper>
+        }
+    }
+</MudContainer>
+
+@code {
+    [Parameter] public string Slug { get; set; } = string.Empty;
+
+    private Project? _project;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _project = await ContentService.GetProjectBySlugAsync(Slug);
+    }
+}

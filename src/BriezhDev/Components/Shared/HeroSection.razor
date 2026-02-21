@@ -1,0 +1,23 @@
+<section class="hero-section">
+    <MudContainer MaxWidth="MaxWidth.Large">
+        <MudStack Spacing="4" Class="py-16">
+            <MudText Typo="Typo.h1">@Title</MudText>
+            @if (!string.IsNullOrEmpty(Subtitle))
+            {
+                <MudText Typo="Typo.h5" Color="Color.Secondary" Class="hero-subtitle">
+                    @Subtitle
+                </MudText>
+            }
+            @if (ChildContent is not null)
+            {
+                @ChildContent
+            }
+        </MudStack>
+    </MudContainer>
+</section>
+
+@code {
+    [Parameter] public string Title { get; set; } = string.Empty;
+    [Parameter] public string? Subtitle { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

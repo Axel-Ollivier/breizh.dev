@@ -1,0 +1,29 @@
+<MudCard Elevation="0" Class="article-card" @onclick="NavigateToArticle" Style="cursor: pointer;">
+    <MudCardContent>
+        <MudStack Spacing="2">
+            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                @Article.Date.ToString("dd MMMM yyyy", System.Globalization.CultureInfo.GetCultureInfo("fr-FR"))
+            </MudText>
+            <MudText Typo="Typo.h6">@Article.Title</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                @Article.Summary
+            </MudText>
+            <MudStack Row Wrap="Wrap.Wrap" Spacing="1">
+                @foreach (var tag in Article.Tags)
+                {
+                    <TagBadge Tag="@tag" />
+                }
+            </MudStack>
+        </MudStack>
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter, EditorRequired] public Article Article { get; set; } = null!;
+    [Inject] private NavigationManager Navigation { get; set; } = null!;
+
+    private void NavigateToArticle()
+    {
+        Navigation.NavigateTo($"/articles/{Article.Slug}");
+    }
+}

@@ -1,0 +1,53 @@
+@inherits LayoutComponentBase
+@inject IJSRuntime JS
+
+<MudThemeProvider @ref="_themeProvider" Theme="BriezhDev.Theme.BriezhDevTheme.Create()" @bind-IsDarkMode="_isDarkMode" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<MudLayout>
+    <NavMenu IsDarkMode="_isDarkMode" OnToggleTheme="ToggleTheme" />
+
+    <MudMainContent Class="main-content">
+        @Body
+    </MudMainContent>
+
+    <footer class="footer">
+        <MudContainer MaxWidth="MaxWidth.Large">
+            <MudStack Row Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="py-6">
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    &copy; @DateTime.Now.Year — breizh.dev
+                </MudText>
+                <MudStack Row Spacing="2">
+                    <MudIconButton Icon="@Icons.Custom.Brands.GitHub"
+                                   Href="https://github.com"
+                                   Target="_blank"
+                                   Color="Color.Default"
+                                   Size="Size.Small"
+                                   aria-label="GitHub" />
+                </MudStack>
+            </MudStack>
+        </MudContainer>
+    </footer>
+</MudLayout>
+
+@code {
+    private MudThemeProvider _themeProvider = null!;
+    private bool _isDarkMode;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _isDarkMode = await JS.InvokeAsync<bool>("eval", "localStorage.getItem('darkMode') === 'true'");
+            StateHasChanged();
+        }
+    }
+
+    private async Task ToggleTheme()
+    {
+        _isDarkMode = !_isDarkMode;
+        await JS.InvokeVoidAsync("eval", $"localStorage.setItem('darkMode', '{_isDarkMode.ToString().ToLower()}')");
+    }
+}

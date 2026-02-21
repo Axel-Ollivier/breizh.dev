@@ -1,0 +1,57 @@
+@page "/articles/{Slug}"
+@inject ContentService ContentService
+
+<PageTitle>@(_article?.Title ?? "Article") — breizh.dev</PageTitle>
+<HeadContent>
+    <meta name="description" content="@(_article?.Summary ?? "Article technique")" />
+</HeadContent>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="py-8">
+    @if (_article is null)
+    {
+        <MudText Typo="Typo.body1" Color="Color.Secondary">Article non trouvé.</MudText>
+        <MudButton Href="/articles" Variant="Variant.Text" Color="Color.Primary" Class="mt-4">
+            Retour aux articles
+        </MudButton>
+    }
+    else
+    {
+        <MudButton Href="/articles"
+                   StartIcon="@Icons.Material.Filled.ArrowBack"
+                   Variant="Variant.Text"
+                   Color="Color.Default"
+                   Class="mb-4">
+            Retour aux articles
+        </MudButton>
+
+        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-2">
+            @_article.Date.ToString("dd MMMM yyyy", System.Globalization.CultureInfo.GetCultureInfo("fr-FR"))
+        </MudText>
+
+        <MudText Typo="Typo.h3" Class="mb-4">@_article.Title</MudText>
+
+        <MudStack Row Wrap="Wrap.Wrap" Spacing="1" Class="mb-6">
+            @foreach (var tag in _article.Tags)
+            {
+                <TagBadge Tag="@tag" />
+            }
+        </MudStack>
+
+        <MudDivider Class="mb-6" />
+
+        <article class="markdown-content">
+            @((MarkupString)_article.HtmlContent)
+        </article>
+    }
+</MudContainer>
+
+@code {
+    [Parameter] public string Slug { get; set; } = string.Empty;
+
+    private Article? _article;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _article = await ContentService.GetArticleBySlugAsync(Slug);
+    }
+}

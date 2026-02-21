@@ -1,0 +1,52 @@
+<MudCard Elevation="0" Class="project-card">
+    @if (!string.IsNullOrEmpty(Project.ImageUrl))
+    {
+        <MudCardMedia Image="@Project.ImageUrl" Height="200" />
+    }
+    <MudCardContent>
+        <MudText Typo="Typo.h6" Class="mb-2">@Project.Title</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">
+            @Project.Description
+        </MudText>
+        <MudStack Row Wrap="Wrap.Wrap" Spacing="1">
+            @foreach (var tag in Project.Tags)
+            {
+                <TagBadge Tag="@tag" />
+            }
+        </MudStack>
+    </MudCardContent>
+    <MudCardActions>
+        @if (!string.IsNullOrEmpty(Project.GitHubUrl))
+        {
+            <MudButton Href="@Project.GitHubUrl"
+                       Target="_blank"
+                       StartIcon="@Icons.Custom.Brands.GitHub"
+                       Color="Color.Default"
+                       Variant="Variant.Text"
+                       Size="Size.Small">
+                GitHub
+            </MudButton>
+        }
+        @if (!string.IsNullOrEmpty(Project.DemoUrl))
+        {
+            <MudButton Href="@Project.DemoUrl"
+                       Target="_blank"
+                       StartIcon="@Icons.Material.Filled.OpenInNew"
+                       Color="Color.Primary"
+                       Variant="Variant.Text"
+                       Size="Size.Small">
+                Démo
+            </MudButton>
+        }
+        <MudButton Href="@($"/projects/{Project.Slug}")"
+                   Color="Color.Primary"
+                   Variant="Variant.Text"
+                   Size="Size.Small">
+            Détails
+        </MudButton>
+    </MudCardActions>
+</MudCard>
+
+@code {
+    [Parameter, EditorRequired] public Project Project { get; set; } = null!;
+}

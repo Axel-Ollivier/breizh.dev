@@ -1,0 +1,59 @@
+@page "/"
+@inject ContentService ContentService
+
+<PageTitle>breizh.dev — Accueil</PageTitle>
+<HeadContent>
+    <meta name="description" content="Portfolio et blog de développeur — projets, articles techniques et retours d'expérience." />
+</HeadContent>
+
+<HeroSection Title="breizh.dev"
+             Subtitle="Développeur passionné — projets, articles et retours d'expérience.">
+    <MudStack Row Spacing="2">
+        <MudButton Href="/projects" Variant="Variant.Filled" Color="Color.Primary">
+            Voir les projets
+        </MudButton>
+        <MudButton Href="/articles" Variant="Variant.Outlined" Color="Color.Primary">
+            Lire les articles
+        </MudButton>
+    </MudStack>
+</HeroSection>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="py-8">
+    @if (_recentProjects.Count > 0)
+    {
+        <MudText Typo="Typo.h4" Class="mb-4">Projets récents</MudText>
+        <MudGrid Spacing="4" Class="mb-8">
+            @foreach (var project in _recentProjects)
+            {
+                <MudItem xs="12" sm="6" md="4">
+                    <ProjectCard Project="project" />
+                </MudItem>
+            }
+        </MudGrid>
+    }
+
+    @if (_recentArticles.Count > 0)
+    {
+        <MudText Typo="Typo.h4" Class="mb-4">Derniers articles</MudText>
+        <MudStack Spacing="3">
+            @foreach (var article in _recentArticles)
+            {
+                <ArticleCard Article="article" />
+            }
+        </MudStack>
+    }
+</MudContainer>
+
+@code {
+    private List<Project> _recentProjects = [];
+    private List<Article> _recentArticles = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        var projects = await ContentService.GetProjectsAsync();
+        _recentProjects = projects.Take(3).ToList();
+
+        var articles = await ContentService.GetArticlesAsync();
+        _recentArticles = articles.Take(3).ToList();
+    }
+}
