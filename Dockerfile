@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:8.0-alpine AS build
 WORKDIR /src
 
 COPY src/BreizhDev/BreizhDev.csproj src/BreizhDev/
@@ -7,7 +7,7 @@ RUN dotnet restore src/BreizhDev/BreizhDev.csproj
 COPY src/BreizhDev/ src/BreizhDev/
 RUN dotnet publish src/BreizhDev -c Release -o /app --no-restore
 
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:8.0-alpine AS runtime
 WORKDIR /app
 
 ENV ASPNETCORE_URLS=http://+:8080

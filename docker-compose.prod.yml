@@ -1,0 +1,16 @@
+services:
+  app:
+    image: ghcr.io/axel-ollivier/breizhdev:latest
+    restart: unless-stopped
+    networks:
+      - web
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.breizhdev.rule=Host(`breizh.dev`) || Host(`www.breizh.dev`)"
+      - "traefik.http.routers.breizhdev.entrypoints=websecure"
+      - "traefik.http.routers.breizhdev.tls.certresolver=letsencrypt"
+      - "traefik.http.services.breizhdev.loadbalancer.server.port=8080"
+
+networks:
+  web:
+    external: true
