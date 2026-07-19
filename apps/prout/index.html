@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0e0e12" />
+  <title>Prout</title>
+  <style>
+    :root {
+      color-scheme: dark;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    html, body {
+      height: 100%;
+      margin: 0;
+    }
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(circle at 50% 30%, #1c1c26, #0e0e12);
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      overflow: hidden;
+    }
+    button {
+      font-size: clamp(5rem, 30vw, 12rem);
+      line-height: 1;
+      padding: 0;
+      width: clamp(9rem, 45vw, 16rem);
+      height: clamp(9rem, 45vw, 16rem);
+      border-radius: 50%;
+      border: none;
+      cursor: pointer;
+      background: #26262f;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5),
+                  inset 0 2px 6px rgba(255, 255, 255, 0.06);
+      transition: transform 0.08s ease, box-shadow 0.08s ease;
+      user-select: none;
+    }
+    button:hover {
+      transform: translateY(-2px);
+    }
+    button:active,
+    button.squish {
+      transform: scale(0.88);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5),
+                  inset 0 2px 10px rgba(0, 0, 0, 0.4);
+    }
+    button:focus-visible {
+      outline: 3px solid #6b6bff;
+      outline-offset: 6px;
+    }
+  </style>
+</head>
+<body>
+  <button id="prout" aria-label="Faire un prout" title="Appuie !">💩</button>
+
+  <script>
+    const button = document.getElementById("prout");
+    let audioCtx;
+
+    // Fart sound, fully synthesized so there's no binary asset to ship.
+    // A pitch-dropping sawtooth with a low-frequency wobble (the "brap"),
+    // muffled through a lowpass filter. Params jitter a bit each press so
+    // no two prouts sound quite the same.
+    function playFart() {
+      audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+      const ctx = audioCtx;
+      const now = ctx.currentTime;
+
+      const duration = 0.45 + Math.random() * 0.5;
+      const startFreq = 90 + Math.random() * 80;
+      const endFreq = 40 + Math.random() * 25;
+      const wobbleRate = 14 + Math.random() * 16;
+
+      const osc = ctx.createOscillator();
+      osc.type = "sawtooth";
+      osc.frequency.setValueAtTime(startFreq, now);
+      osc.frequency.exponentialRampToValueAtTime(endFreq, now + duration);
+
+      // Low-frequency oscillator wobbling the pitch -> the flutter.
+      const lfo = ctx.createOscillator();
+      lfo.type = "sine";
+      lfo.frequency.setValueAtTime(wobbleRate, now);
+      const lfoGain = ctx.createGain();
+      lfoGain.gain.setValueAtTime(30 + Math.random() * 30, now);
+      lfo.connect(lfoGain).connect(osc.frequency);
+
+      const filter = ctx.createBiquadFilter();
+      filter.type = "lowpass";
+      filter.frequency.setValueAtTime(900, now);
+      filter.frequency.exponentialRampToValueAtTime(300, now + duration);
+
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(0.55, now + 0.04);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+
+      osc.connect(filter).connect(gain).connect(ctx.destination);
+      osc.start(now);
+      lfo.start(now);
+      osc.stop(now + duration);
+      lfo.stop(now + duration);
+    }
+
+    function squish() {
+      button.classList.add("squish");
+      setTimeout(() => button.classList.remove("squish"), 120);
+    }
+
+    button.addEventListener("click", () => {
+      // Resume is required on browsers that suspend audio until a gesture.
+      if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
+      playFart();
+      squish();
+    });
+  </script>
+</body>
+</html>
