@@ -83,6 +83,28 @@ Les projets sont définis dans `Content/projects/projects.json` :
 ]
 ```
 
+## Mini apps (sous-domaines)
+
+En plus du site principal, le dépôt héberge des **mini apps front** autonomes,
+chacune servie sur son propre sous-domaine via un conteneur dédié. Le routage est
+géré par **Traefik** (labels Docker dans `docker-compose.prod.yml`).
+
+```
+apps/
+└── prout/               → prout.breizh.dev (page statique, servie par nginx)
+    ├── index.html
+    └── Dockerfile
+```
+
+### Ajouter une nouvelle mini app
+
+1. Créer `apps/<nom>/` avec le code de l'app et un `Dockerfile`.
+2. Ajouter un service dans `docker-compose.prod.yml` avec les labels Traefik
+   (`Host(\`<nom>.breizh.dev\`)` + port interne du conteneur).
+3. Ajouter une entrée dans la matrice `build-and-push` du workflow
+   `.github/workflows/deploy.yml` (`name` / `context` / `dockerfile`).
+4. Faire pointer le DNS `<nom>.breizh.dev` vers le serveur.
+
 ## Déploiement
 
 Le déploiement est automatisé via GitHub Actions. Un push sur `main` déclenche :

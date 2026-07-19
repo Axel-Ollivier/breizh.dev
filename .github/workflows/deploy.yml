@@ -6,7 +6,6 @@ on:
       - main
 
 env:
-  IMAGE_NAME: breizhdev
   REGISTRY: ghcr.io
   APP_DIR: /apps/breizhdev
 
@@ -16,6 +15,16 @@ jobs:
     permissions:
       contents: read
       packages: write
+
+    strategy:
+      matrix:
+        include:
+          - name: breizhdev
+            context: .
+            dockerfile: Dockerfile
+          - name: prout
+            context: apps/prout
+            dockerfile: apps/prout/Dockerfile
 
     steps:
       - name: Checkout
@@ -31,14 +40,15 @@ jobs:
       - name: Set image tag
         id: meta
         run: |
-          IMAGE_TAG=${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}
+          IMAGE_TAG=${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.name }}
           echo "tag=${IMAGE_TAG,,}:latest" >> $GITHUB_OUTPUT
           echo "sha=${IMAGE_TAG,,}:${{ github.sha }}" >> $GITHUB_OUTPUT
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
         with:
-          context: .
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
           push: true
           tags: |
             ${{ steps.meta.outputs.tag }}
@@ -51,12 +61,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Set image tag
-        id: meta
-        run: |
-          IMAGE_TAG=${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}
-          echo "tag=${IMAGE_TAG,,}:latest" >> $GITHUB_OUTPUT
 
       - name: Setup SSH key
         env:
@@ -73,13 +77,13 @@ jobs:
             docker-compose.prod.yml \
             ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:${{ env.APP_DIR }}/docker-compose.prod.yml
 
-      - name: Deploy container
+      - name: Deploy containers
         run: |
           ssh -i ~/.ssh/deploy_key \
             ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
             "echo '${{ secrets.GHCR_TOKEN }}' | docker login ghcr.io -u ${{ github.actor }} --password-stdin && \
-             docker pull ${{ steps.meta.outputs.tag }} && \
              cd ${{ env.APP_DIR }} && \
+             docker compose -f docker-compose.prod.yml pull && \
              docker compose -f docker-compose.prod.yml up -d && \
              docker logout ghcr.io"
 

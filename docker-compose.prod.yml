@@ -11,6 +11,18 @@ services:
       - "traefik.http.routers.breizhdev.tls.certresolver=letsencrypt"
       - "traefik.http.services.breizhdev.loadbalancer.server.port=8080"
 
+  prout:
+    image: ghcr.io/axel-ollivier/prout:latest
+    restart: unless-stopped
+    networks:
+      - web
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.prout.rule=Host(`prout.breizh.dev`)"
+      - "traefik.http.routers.prout.entrypoints=websecure"
+      - "traefik.http.routers.prout.tls.certresolver=letsencrypt"
+      - "traefik.http.services.prout.loadbalancer.server.port=80"
+
 networks:
   web:
     external: true
