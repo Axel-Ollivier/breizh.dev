@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#f5f4f0" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💩</text></svg>" />
   <title>Prout</title>
   <style>
     :root {
@@ -67,50 +68,37 @@
 
   <script>
     const button = document.getElementById("prout");
-    let audioCtx;
 
-    // Fart sound, fully synthesized so there's no binary asset to ship.
-    // A pitch-dropping sawtooth with a low-frequency wobble (the "brap"),
-    // muffled through a lowpass filter. Params jitter a bit each press so
-    // no two prouts sound quite the same.
+    // Real recorded fart samples, played at random. Files are fetched on
+    // first use (and then browser-cached), so the page loads instantly.
+    const SOUNDS = [
+      "sounds/fart-01.wav",
+      "sounds/fart-02.wav",
+      "sounds/fart-03.wav",
+      "sounds/fart-04.wav",
+      "sounds/fart-05.wav",
+      "sounds/fart-06.wav",
+      "sounds/fart-07.wav",
+      "sounds/fart-08.wav",
+      "sounds/fart-squeak-01.wav",
+    ];
+
+    let last = -1;
+
+    function pickIndex() {
+      if (SOUNDS.length < 2) return 0;
+      let i;
+      do {
+        i = Math.floor(Math.random() * SOUNDS.length);
+      } while (i === last); // never the same one twice in a row
+      last = i;
+      return i;
+    }
+
     function playFart() {
-      audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
-      const ctx = audioCtx;
-      const now = ctx.currentTime;
-
-      const duration = 0.45 + Math.random() * 0.5;
-      const startFreq = 90 + Math.random() * 80;
-      const endFreq = 40 + Math.random() * 25;
-      const wobbleRate = 14 + Math.random() * 16;
-
-      const osc = ctx.createOscillator();
-      osc.type = "sawtooth";
-      osc.frequency.setValueAtTime(startFreq, now);
-      osc.frequency.exponentialRampToValueAtTime(endFreq, now + duration);
-
-      // Low-frequency oscillator wobbling the pitch -> the flutter.
-      const lfo = ctx.createOscillator();
-      lfo.type = "sine";
-      lfo.frequency.setValueAtTime(wobbleRate, now);
-      const lfoGain = ctx.createGain();
-      lfoGain.gain.setValueAtTime(30 + Math.random() * 30, now);
-      lfo.connect(lfoGain).connect(osc.frequency);
-
-      const filter = ctx.createBiquadFilter();
-      filter.type = "lowpass";
-      filter.frequency.setValueAtTime(900, now);
-      filter.frequency.exponentialRampToValueAtTime(300, now + duration);
-
-      const gain = ctx.createGain();
-      gain.gain.setValueAtTime(0.0001, now);
-      gain.gain.exponentialRampToValueAtTime(0.55, now + 0.04);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
-
-      osc.connect(filter).connect(gain).connect(ctx.destination);
-      osc.start(now);
-      lfo.start(now);
-      osc.stop(now + duration);
-      lfo.stop(now + duration);
+      // Fresh element each press so rapid clicks overlap instead of cutting off.
+      const audio = new Audio(SOUNDS[pickIndex()]);
+      audio.play().catch(() => { /* ignore autoplay/decoding hiccups */ });
     }
 
     function squish() {
@@ -119,8 +107,6 @@
     }
 
     button.addEventListener("click", () => {
-      // Resume is required on browsers that suspend audio until a gesture.
-      if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
       playFart();
       squish();
     });
