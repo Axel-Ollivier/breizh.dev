@@ -1,6 +1,10 @@
 import * as Tone from 'tone';
 
+import { DEFAULT_VELOCITY, type Track } from '../engine/pattern';
+import { degreeToMidi } from '../engine/scales';
 import { useAwenStore } from '../state/store';
+import { SupersawLead } from './instruments/SupersawLead';
+import type { Instrument } from './instruments/types';
 
 /**
  * Encapsulation Tone.js — seul module (avec `instruments/`) à importer 'tone'.
@@ -12,17 +16,17 @@ import { useAwenStore } from '../state/store';
  *   Transport (jamais un compteur parallèle, jamais l'horloge JS).
  * - Le moteur lit le store à chaque tick : l'édition pendant la lecture est
  *   prise en compte au pas suivant.
+ * - La position visuelle (playhead) passe par `Tone.Draw` : l'UI s'abonne via
+ *   `subscribeStep`, aucun setState à la cadence audio.
  * - `dispose()` de tout node remplacé ; teardown global en dev pour le HMR.
- *
- * Phase 1 : pas encore d'instruments — un click de métronome (noires, accent
- * en début de mesure) sert de preuve de vie sonore. Retiré en phase 2.
  */
 class AudioEngine {
   private initPromise: Promise<void> | null = null;
   private busy = false;
   private repeatId: number | null = null;
-  private click: Tone.Synth | null = null;
+  private instruments = new Map<string, Instrument>();
   private unsubscribeBpm: (() => void) | null = null;
+  private stepListeners = new Set<(step: number) => void>();
 
   /** Init mémoïsée : deux appels concurrents partagent la même promesse. */
   private ensureInitialized(): Promise<void> {
@@ -36,17 +40,27 @@ class AudioEngine {
 
   private async initialize(): Promise<void> {
     await Tone.start();
-    this.click = new Tone.Synth({
-      oscillator: { type: 'square' },
-      envelope: { attack: 0.001, decay: 0.05, sustain: 0, release: 0.01 },
-      volume: -12,
-    }).toDestination();
+    const destination = Tone.getDestination();
+    for (const track of useAwenStore.getState().pattern.tracks) {
+      const instrument = this.createInstrument(track, destination);
+      if (instrument) this.instruments.set(track.id, instrument);
+    }
     this.unsubscribeBpm = useAwenStore.subscribe(
       (s) => s.bpm,
       (bpm) => {
         Tone.getTransport().bpm.value = bpm;
       },
     );
+  }
+
+  /** Phase 2 : seul le lead mélodique existe ; kicks et percus en phase 3. */
+  private createInstrument(track: Track, destination: Tone.ToneAudioNode): Instrument | null {
+    switch (track.instrumentId) {
+      case 'supersaw':
+        return new SupersawLead(destination);
+      default:
+        return null;
+    }
   }
 
   private async start(): Promise<void> {
@@ -63,6 +77,7 @@ class AudioEngine {
   private stop(): void {
     Tone.getTransport().stop();
     useAwenStore.getState().setPlaying(false);
+    this.notifyStep(-1);
   }
 
   /** Ne rejette jamais : les erreurs audio sont loguées et l'état reste cohérent. */
@@ -80,24 +95,47 @@ class AudioEngine {
     }
   }
 
+  /**
+   * Playhead : l'UI s'abonne ici ; les callbacks sont invoqués via `Tone.Draw`
+   * au moment audio du pas (`-1` = lecture arrêtée). Retourne le désabonnement.
+   */
+  subscribeStep(listener: (step: number) => void): () => void {
+    this.stepListeners.add(listener);
+    return () => this.stepListeners.delete(listener);
+  }
+
+  private notifyStep(step: number): void {
+    for (const listener of this.stepListeners) listener(step);
+  }
+
   private onTick(time: number): void {
-    const { pattern } = useAwenStore.getState();
+    const { pattern, scale } = useAwenStore.getState();
     const transport = Tone.getTransport();
     // Pas courant dérivé de la position du Transport (ticks → double-croches).
     const ticksPerStep = transport.PPQ / 4;
-    const step =
-      Math.floor(transport.getTicksAtTime(time) / ticksPerStep) % pattern.lengthSteps;
+    const step = Math.floor(transport.getTicksAtTime(time) / ticksPerStep) % pattern.lengthSteps;
 
-    // Phase 1 : click sur les noires, accent sur le premier temps de chaque mesure.
-    if (step % 4 === 0) {
-      const accent = step % 16 === 0;
-      this.click?.triggerAttackRelease(accent ? 1760 : 880, '64n', time, accent ? 0.9 : 0.4);
+    const anySolo = pattern.tracks.some((t) => t.solo);
+    for (const track of pattern.tracks) {
+      if (track.mute || (anySolo && !track.solo)) continue;
+      const instrument = this.instruments.get(track.id);
+      const stepData = track.steps[step];
+      if (!instrument || !stepData?.on || stepData.pitch === undefined) continue;
+      instrument.trigger(
+        {
+          midi: degreeToMidi(scale, stepData.pitch),
+          velocity: stepData.vel ?? DEFAULT_VELOCITY,
+        },
+        time,
+      );
     }
+
+    Tone.getDraw().schedule(() => this.notifyStep(step), time);
   }
 
   private disposeNodes(): void {
-    this.click?.dispose();
-    this.click = null;
+    for (const instrument of this.instruments.values()) instrument.dispose();
+    this.instruments.clear();
     this.unsubscribeBpm?.();
     this.unsubscribeBpm = null;
     this.initPromise = null;
@@ -112,6 +150,7 @@ class AudioEngine {
       this.repeatId = null;
     }
     this.disposeNodes();
+    this.stepListeners.clear();
     useAwenStore.getState().setPlaying(false);
   }
 }
