@@ -94,9 +94,12 @@ apps/
 ├── prout/               → prout.breizh.dev (page statique, servie par nginx)
 │   ├── index.html
 │   └── Dockerfile
-└── krampouezh/          → krampouezh.breizh.dev (jeu d'empilement de crêpes, canvas)
-    ├── index.html
-    └── Dockerfile
+├── krampouezh/          → krampouezh.breizh.dev (jeu d'empilement de crêpes, canvas)
+│   ├── index.html
+│   └── Dockerfile
+└── awen/                → awen.breizh.dev (séquenceur hardstyle génératif — Vite + React + Tone.js)
+    ├── src/             → engine (logique pure) / audio (Tone) / ui (React) / state (Zustand)
+    └── Dockerfile       → build Vite puis nginx statique
 ```
 
 ### Ajouter une nouvelle mini app
