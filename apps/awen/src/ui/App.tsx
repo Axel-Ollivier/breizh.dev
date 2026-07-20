@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 import { audioEngine } from '../audio/AudioEngine';
 import { BPM_MAX, BPM_MIN, useAwenStore } from '../state/store';
@@ -7,6 +7,14 @@ export function App() {
   const isPlaying = useAwenStore((s) => s.isPlaying);
   const bpm = useAwenStore((s) => s.bpm);
   const setBpm = useAwenStore((s) => s.setBpm);
+  // Brouillon local : la valeur n'est clampée/commitée qu'au blur ou à Entrée,
+  // sinon un input contrôlé clampé à la frappe rend le BPM intapable.
+  const [bpmDraft, setBpmDraft] = useState<string | null>(null);
+
+  const commitBpm = () => {
+    if (bpmDraft !== null) setBpm(Number(bpmDraft));
+    setBpmDraft(null);
+  };
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -51,8 +59,12 @@ export function App() {
             type="number"
             min={BPM_MIN}
             max={BPM_MAX}
-            value={bpm}
-            onChange={(e) => setBpm(e.target.valueAsNumber)}
+            value={bpmDraft ?? bpm}
+            onChange={(e) => setBpmDraft(e.target.value)}
+            onBlur={commitBpm}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') e.currentTarget.blur();
+            }}
             className="w-24 rounded-md border border-ink/20 bg-surface px-3 py-2 font-mono text-xl text-wave focus:border-moss focus:outline-none"
           />
         </label>

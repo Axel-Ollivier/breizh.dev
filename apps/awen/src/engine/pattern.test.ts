@@ -109,6 +109,13 @@ describe('setStepVelocity / setStepPitch', () => {
     expect(() => setStepPitch(make(), 'clap', 0, 3)).toThrow(/perc/);
   });
 
+  it('rejette les valeurs non finies (NaN, Infinity)', () => {
+    expect(() => setStepVelocity(make(), 'clap', 0, NaN)).toThrow(/non finie/);
+    expect(() => setStepPitch(make(), 'melody', 0, NaN)).toThrow(/non fini/);
+    expect(() => setStepPitch(make(), 'kick', 0, Infinity)).toThrow(/non fini/);
+    expect(() => toggleStep(make(), 'melody', 0, NaN)).toThrow(/non fini/);
+  });
+
   it('pose le pitch clampé sur kick et melodic', () => {
     let p = setStepPitch(make(), 'kick', 0, -20);
     expect(p.tracks[1]?.steps[0]?.pitch).toBe(-7);
@@ -166,6 +173,19 @@ describe('validatePattern', () => {
     const errors = validatePattern(broken);
     expect(errors.some((e) => e.includes('pitch sur une piste perc'))).toBe(true);
     expect(errors.some((e) => e.includes('followTrackId'))).toBe(true);
+  });
+
+  it('détecte une vélocité NaN (comparaison NaN-safe)', () => {
+    const p = make();
+    const broken: Pattern = {
+      ...p,
+      tracks: p.tracks.map((t) =>
+        t.id === 'clap'
+          ? { ...t, steps: t.steps.map((s, i) => (i === 0 ? { on: true, vel: NaN } : s)) }
+          : t,
+      ),
+    };
+    expect(validatePattern(broken).some((e) => e.includes('hors [0, 1]'))).toBe(true);
   });
 
   it('accepte un followTrackId de kick vers une piste mélodique', () => {

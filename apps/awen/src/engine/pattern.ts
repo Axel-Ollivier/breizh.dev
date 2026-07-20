@@ -113,10 +113,13 @@ function withStep(
   });
 }
 
-const clamp = (value: number, min: number, max: number): number =>
+export const clamp = (value: number, min: number, max: number): number =>
   Math.min(max, Math.max(min, value));
 
 function clampPitch(track: Track, pitch: number): number {
+  if (!Number.isFinite(pitch)) {
+    throw new Error(`Pitch non fini : ${pitch} (piste ${track.id})`);
+  }
   const rounded = Math.round(pitch);
   return track.pitchRange
     ? clamp(rounded, track.pitchRange.min, track.pitchRange.max)
@@ -154,6 +157,9 @@ export function setStepVelocity(
   stepIndex: number,
   vel: number,
 ): Pattern {
+  if (!Number.isFinite(vel)) {
+    throw new Error(`Vélocité non finie : ${vel} (piste ${trackId})`);
+  }
   return withStep(pattern, trackId, stepIndex, (step) => ({
     ...step,
     vel: clamp(vel, 0, 1),
@@ -242,7 +248,7 @@ export function validatePattern(pattern: Pattern): string[] {
           errors.push(`${track.id}[${i}]: pitch ${step.pitch} hors plage`);
         }
       }
-      if (step.vel !== undefined && (step.vel < 0 || step.vel > 1)) {
+      if (step.vel !== undefined && !(step.vel >= 0 && step.vel <= 1)) {
         errors.push(`${track.id}[${i}]: vel ${step.vel} hors [0, 1]`);
       }
       if (track.kind === 'melodic' && step.on && step.pitch === undefined) {

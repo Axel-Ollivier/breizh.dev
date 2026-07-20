@@ -25,6 +25,10 @@ type Track = {
   mute: boolean;
   solo: boolean;
   sendFx: number;                 // [0, 1], niveau vers le bus send (delay/reverb)
+  // Plage de degrés autorisée (pistes melodic/kick). Absente ⟹ aucune contrainte
+  // de plage (l'invariant 2 ne borne que les pistes qui en définissent une) ;
+  // les pistes melodic et kick d'un kit en définissent TOUJOURS une.
+  pitchRange?: { min: number; max: number };
   // Spécifique kick
   followTrackId?: string;         // kick uniquement : si défini, les pitchs sont lus
                                   // sur cette piste (bassline/mélodie) au lieu de la pitch lane
@@ -50,7 +54,8 @@ affiche et que le moteur lit pas à pas.
 - Conversion au moment du trigger : `scales.degreeToMidi(scale, rootMidi, degree)`.
 - **Le snap gamme est donc garanti par construction** : il est impossible de stocker
   une note hors gamme. Changer de gamme re-mappe toute la grille sans opération.
-- Plage mélodique : 2–3 octaves configurées par piste (degrés `0..20` typiquement).
+- Plage mélodique : 2–3 octaves configurées par piste via `Track.pitchRange`
+  (degrés `0..20` typiquement).
 - Trade-off assumé : changer de mode (naturelle → harmonique) change les hauteurs
   entendues à grille constante — c'est le comportement voulu.
 
@@ -84,9 +89,11 @@ Toutes **pures** : `(pattern, args) => Pattern` (nouvel objet, jamais de mutatio
 Testés dans Vitest, valides après **toute** opération ou générateur :
 
 1. `track.steps.length === pattern.lengthSteps` pour toute piste.
-2. `pitch` défini ⟹ entier dans la plage de degrés de la piste ; jamais défini
-   sur une piste `perc`.
-3. `vel` défini ⟹ dans `[0, 1]`.
+2. `pitch` défini ⟹ entier fini, dans `track.pitchRange` si la piste en définit
+   une ; jamais défini sur une piste `perc`. Les opérations rejettent les
+   valeurs non finies (NaN/Infinity) et clampent dans la plage.
+3. `vel` défini ⟹ dans `[0, 1]` (NaN rejeté par les opérations, détecté par le
+   validateur).
 4. `melodic` : `on === true` ⟹ `pitch` défini.
 5. `followTrackId` défini ⟹ pointe une piste existante de kind `melodic`,
    et uniquement sur une piste `kick`.

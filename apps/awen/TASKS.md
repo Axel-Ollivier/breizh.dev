@@ -5,16 +5,16 @@ de review. Un commit par étape cohérente. MVP = fin de phase 4.
 
 ## Phase 1 — Scaffold
 
-- [ ] Scaffold Vite + React 18 + TypeScript strict dans `apps/awen/`
-- [ ] Tailwind (palette : fond `#181A1A`, texte `#FAFAEC`, accents `#2A9B77`/`#2A7AAA`), police Exo 2
-- [ ] ESLint + Prettier (config sobre) + Vitest branché
-- [ ] Arborescence `src/{engine,audio,ui,state}` + garde-fous d'imports (engine sans React/Tone)
-- [ ] `engine/pattern.ts` : types + `createPattern`/`toggleStep`/`setStepVelocity`/`setStepPitch`/`resizePattern`/`clearTrack` + tests des invariants (SPECS §2)
-- [ ] Store Zustand : pattern, bpm, état de lecture
-- [ ] `AudioEngine` : init après geste utilisateur (`Tone.start()`), Transport play/stop à 150 BPM, `scheduleRepeat('16n')` branché sur le store, click de vérification
-- [ ] Teardown global dev (HMR Vite : `dispose()` de tout au rechargement)
-- [ ] Bouton play/stop + BPM affiché, raccourci `espace`
-- [ ] Commit + review
+- [x] Scaffold Vite + React 18 + TypeScript strict dans `apps/awen/`
+- [x] Tailwind (palette : fond `#181A1A`, texte `#FAFAEC`, accents `#2A9B77`/`#2A7AAA`), police Exo 2
+- [x] ESLint + Prettier (config sobre) + Vitest branché
+- [x] Arborescence `src/{engine,audio,ui,state}` + garde-fous d'imports (engine sans React/Tone)
+- [x] `engine/pattern.ts` : types + `createPattern`/`toggleStep`/`setStepVelocity`/`setStepPitch`/`resizePattern`/`clearTrack` + tests des invariants (SPECS §2)
+- [x] Store Zustand : pattern, bpm, état de lecture
+- [x] `AudioEngine` : init après geste utilisateur (`Tone.start()`), Transport play/stop à 150 BPM, `scheduleRepeat('16n')` branché sur le store, click de vérification
+- [x] Teardown global dev (HMR Vite : `dispose()` de tout au rechargement)
+- [x] Bouton play/stop + BPM affiché, raccourci `espace`
+- [x] Commit + review
 
 ## Phase 2 — Grille mélodique
 

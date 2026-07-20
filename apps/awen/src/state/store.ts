@@ -1,6 +1,7 @@
 import { create } from 'zustand';
+import { subscribeWithSelector } from 'zustand/middleware';
 
-import { createPattern, type Pattern } from '../engine/pattern';
+import { clamp, createPattern, type Pattern } from '../engine/pattern';
 
 export const BPM_MIN = 140;
 export const BPM_MAX = 200;
@@ -21,15 +22,21 @@ interface AwenState {
   bpm: number;
   isPlaying: boolean;
   setPattern: (pattern: Pattern) => void;
+  /** Ignore les valeurs non finies (input number vidé → NaN). */
   setBpm: (bpm: number) => void;
   setPlaying: (isPlaying: boolean) => void;
 }
 
-export const useAwenStore = create<AwenState>((set) => ({
-  pattern: defaultPattern(),
-  bpm: DEFAULT_BPM,
-  isPlaying: false,
-  setPattern: (pattern) => set({ pattern }),
-  setBpm: (bpm) => set({ bpm: Math.min(BPM_MAX, Math.max(BPM_MIN, Math.round(bpm))) }),
-  setPlaying: (isPlaying) => set({ isPlaying }),
-}));
+export const useAwenStore = create<AwenState>()(
+  subscribeWithSelector((set) => ({
+    pattern: defaultPattern(),
+    bpm: DEFAULT_BPM,
+    isPlaying: false,
+    setPattern: (pattern) => set({ pattern }),
+    setBpm: (bpm) => {
+      if (!Number.isFinite(bpm)) return;
+      set({ bpm: clamp(Math.round(bpm), BPM_MIN, BPM_MAX) });
+    },
+    setPlaying: (isPlaying) => set({ isPlaying }),
+  })),
+);
