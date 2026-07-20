@@ -3,6 +3,10 @@ import { memo } from 'react';
 interface StepCellProps {
   ariaLabel: string;
   on: boolean;
+  /** Continuation d'une note tenue démarrée en amont (rendu lié, cellule off). */
+  cont?: boolean;
+  /** La note démarrée ici se prolonge sur les pas suivants. */
+  hasTail?: boolean;
   /** 0 quand off — garde les props stables pour la mémoïsation. */
   vel: number;
   /** Premier pas d'un temps (colonne accentuée visuellement). */
@@ -21,6 +25,8 @@ interface StepCellProps {
 export const StepCell = memo(function StepCell({
   ariaLabel,
   on,
+  cont = false,
+  hasTail = false,
   vel,
   beatStart,
   tall = false,
@@ -28,17 +34,22 @@ export const StepCell = memo(function StepCell({
   accent = 'moss',
   onActivate,
 }: StepCellProps) {
-  const onClasses = accent === 'moss' ? 'border-moss bg-moss' : 'border-wave bg-wave';
+  const onClasses =
+    accent === 'moss' ? 'border-moss bg-moss' : 'border-wave bg-wave';
+  const contClasses =
+    accent === 'moss' ? 'border-moss/40 bg-moss/40' : 'border-wave/40 bg-wave/40';
   return (
     <button
       type="button"
       aria-label={ariaLabel}
       aria-pressed={on}
       onClick={(e) => onActivate(e.shiftKey)}
-      className={`${tall ? 'h-8' : small ? 'h-4' : 'h-5'} w-full rounded-[3px] border transition-colors ${
+      className={`${tall ? 'h-8' : small ? 'h-4' : 'h-5'} w-full border transition-colors ${
         on
-          ? onClasses
-          : `border-ink/10 hover:border-moss/60 ${beatStart ? 'bg-ink/10' : 'bg-ink/5'}`
+          ? `${hasTail ? 'rounded-l-[3px]' : 'rounded-[3px]'} ${onClasses}`
+          : cont
+            ? `rounded-none ${contClasses}`
+            : `rounded-[3px] border-ink/10 hover:border-moss/60 ${beatStart ? 'bg-ink/10' : 'bg-ink/5'}`
       }`}
       style={on ? { opacity: 0.35 + 0.65 * vel } : undefined}
     />

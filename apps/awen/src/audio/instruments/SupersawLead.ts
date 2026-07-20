@@ -17,7 +17,7 @@ export class SupersawLead implements Instrument {
   trigger(step: ResolvedStep, time: number): void {
     this.synth.triggerAttackRelease(
       Tone.Frequency(step.midi, 'midi').toFrequency(),
-      '16n',
+      step.durationSec ?? '16n',
       time,
       step.velocity,
     );

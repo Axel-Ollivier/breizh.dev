@@ -3,8 +3,11 @@ import { describe, expect, it } from 'vitest';
 import {
   clearStepPitch,
   clearTrack,
+  copyMeasure,
   createPattern,
   resizePattern,
+  setStepLen,
+  setTrackDrive,
   resolveKickPitch,
   setStepBend,
   setStepGate,
@@ -284,6 +287,41 @@ describe('resolveKickPitch', () => {
   it('sans pitch ni suivi : undefined (hauteur native)', () => {
     const p = toggleStep(make(), 'kick', 0);
     expect(resolveKickPitch(p, p.tracks[1]!, 0)).toBeUndefined();
+  });
+});
+
+describe('len / drive / copyMeasure (phase 5)', () => {
+  it('pose et retire la durée d’une note mélodique, cap à la fin du pattern', () => {
+    let p = toggleStep(make(), 'melody', 0, 5);
+    p = setStepLen(p, 'melody', 0, 4);
+    expect(p.tracks[0]?.steps[0]?.len).toBe(4);
+    expect(validatePattern(p)).toEqual([]);
+    p = setStepLen(p, 'melody', 0, 1);
+    expect(p.tracks[0]?.steps[0]?.len).toBeUndefined();
+    p = toggleStep(p, 'melody', 14, 3);
+    p = setStepLen(p, 'melody', 14, 10); // cap : 16 - 14 = 2
+    expect(p.tracks[0]?.steps[14]?.len).toBe(2);
+    expect(() => setStepLen(p, 'kick', 0, 2)).toThrow(/mélodiques/);
+  });
+
+  it('clampe le drive et le valide', () => {
+    let p = setTrackDrive(make(), 'kick', 1.7);
+    expect(p.tracks[1]?.drive).toBe(1);
+    p = setTrackDrive(p, 'kick', -1);
+    expect(p.tracks[1]?.drive).toBe(0);
+    expect(() => setTrackDrive(p, 'kick', NaN)).toThrow(/non fini/);
+  });
+
+  it('copyMeasure copie toutes les pistes, borne les mesures', () => {
+    let p = resizePattern(make(), 32);
+    p = toggleStep(p, 'melody', 2, 8);
+    p = toggleStep(p, 'kick', 0, 3);
+    p = copyMeasure(p, 0, 1);
+    expect(p.tracks[0]?.steps[18]).toEqual(p.tracks[0]?.steps[2]);
+    expect(p.tracks[1]?.steps[16]).toEqual(p.tracks[1]?.steps[0]);
+    expect(validatePattern(p)).toEqual([]);
+    expect(() => copyMeasure(p, 0, 2)).toThrow(/hors pattern/);
+    expect(copyMeasure(p, 1, 1)).toBe(p);
   });
 });
 

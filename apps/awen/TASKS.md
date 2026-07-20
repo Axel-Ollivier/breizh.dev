@@ -54,12 +54,12 @@ de review. Un commit par étape cohérente. MVP = fin de phase 4.
 
 ## Phase 5 — Sound design & polish
 
-- [ ] Chaînes de distorsion par piste (indispensable au genre)
-- [ ] Screech : FM ou saw détuné + grosse distorsion + pitch bend court (version basique acceptable)
-- [ ] Ducking lead/screech contre le kick (enveloppe de gain simple, optionnel)
-- [ ] Durées de notes (drag) sur la piste mélodique
-- [ ] Sélection/copie de pas
-- [ ] Commit + review
+- [x] Chaînes de distorsion par piste (indispensable au genre)
+- [x] Screech : FM ou saw détuné + grosse distorsion + pitch bend court (version basique acceptable)
+- [x] Ducking lead/screech contre le kick (enveloppe de gain simple, optionnel)
+- [x] Durées de notes (drag) sur la piste mélodique
+- [x] Sélection/copie de pas (copie de mesure, toutes pistes)
+- [x] Commit + review
 
 ## Phase 6 — Export & kits
 

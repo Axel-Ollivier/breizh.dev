@@ -12,13 +12,20 @@ import { Clap } from './instruments/Clap';
 import { Hats } from './instruments/Hats';
 import { KICK_SLOTS, KickSampler } from './instruments/KickSampler';
 import { KickSynth } from './instruments/KickSynth';
+import { Pluck } from './instruments/Pluck';
 import { Ride } from './instruments/Ride';
+import { Screech } from './instruments/Screech';
+import { SquareLead } from './instruments/SquareLead';
 import { SupersawLead } from './instruments/SupersawLead';
 import type { Instrument, ResolvedStep } from './instruments/types';
 
 interface TrackNodes {
   instrumentId: string;
   instrument: Instrument | null;
+  /** Distorsion de piste (wet = drive du modèle, 0 = bypass). */
+  distortion: Tone.Distortion;
+  /** Ducking contre le kick — pistes mélodiques uniquement. */
+  duck: Tone.Gain | null;
   /** Volume/pan par piste, sortie vers le master. */
   channel: Tone.Channel;
   /** Départ post-fader vers le bus FX (delay + reverb). */
@@ -118,24 +125,32 @@ class AudioEngine {
       seen.add(track.id);
       let nodes = this.tracks.get(track.id);
       if (!nodes) {
+        // Chaîne : instrument -> distorsion -> [duck] -> channel -> master (+ send).
         const channel = new Tone.Channel({ volume: track.volume }).connect(masterBus);
         const send = new Tone.Gain(track.sendFx).connect(fxInput);
         channel.connect(send);
-        nodes = { instrumentId: '', instrument: null, channel, send };
+        const duck = track.kind === 'melodic' ? new Tone.Gain(1).connect(channel) : null;
+        const distortion = new Tone.Distortion({ distortion: 0.8, wet: track.drive }).connect(
+          duck ?? channel,
+        );
+        nodes = { instrumentId: '', instrument: null, distortion, duck, channel, send };
         this.tracks.set(track.id, nodes);
       }
       if (nodes.instrumentId !== track.instrumentId) {
         nodes.instrument?.dispose();
-        nodes.instrument = this.createInstrument(track.instrumentId, nodes.channel);
+        nodes.instrument = this.createInstrument(track.instrumentId, nodes.distortion);
         nodes.instrumentId = track.instrumentId;
       }
       nodes.channel.volume.value = track.volume;
       nodes.send.gain.value = track.sendFx;
+      nodes.distortion.wet.value = track.drive;
     }
 
     for (const [id, nodes] of this.tracks) {
       if (seen.has(id)) continue;
       nodes.instrument?.dispose();
+      nodes.distortion.dispose();
+      nodes.duck?.dispose();
       nodes.channel.dispose();
       nodes.send.dispose();
       this.tracks.delete(id);
@@ -153,6 +168,12 @@ class AudioEngine {
         const tonic = degreeToMidi(useAwenStore.getState().scale, 0);
         return new KickSampler(destination, this.kickBuffers, tonic);
       }
+      case 'square':
+        return new SquareLead(destination);
+      case 'pluck':
+        return new Pluck(destination);
+      case 'screech':
+        return new Screech(destination);
       case 'clap':
         return new Clap(destination);
       case 'hats':
@@ -270,6 +291,9 @@ class AudioEngine {
           // Seules les pistes mélodiques exigent un pitch par pas.
           if (stepData.pitch === undefined) continue;
           midi = degreeToMidi(scale, stepData.pitch);
+          if (stepData.len !== undefined) {
+            expressive = { durationSec: stepData.len * stepSec * 0.95 };
+          }
         } else if (track.kind === 'kick') {
           // Pitch lane > suivi bassline > hauteur native (tonique).
           const degree = resolveKickPitch(pattern, track, step);
@@ -291,6 +315,27 @@ class AudioEngine {
         // Un pitch invalide (pattern écrit sans passer par les opérations)
         // ne doit pas tuer le tick des autres pistes ni le playhead.
         console.error(`Trigger impossible (piste ${track.id}, pas ${step}) :`, error);
+      }
+    }
+
+    // Ducking : les pistes mélodiques plongent brièvement quand un kick
+    // audible tombe sur ce pas (enveloppe de gain simple).
+    if (useAwenStore.getState().ducking) {
+      const kickHits = pattern.tracks.some(
+        (t) =>
+          t.kind === 'kick' &&
+          !t.mute &&
+          !(anySolo && !t.solo) &&
+          t.steps[step]?.on === true,
+      );
+      if (kickHits) {
+        for (const t of pattern.tracks) {
+          const duck = this.tracks.get(t.id)?.duck;
+          if (!duck) continue;
+          duck.gain.cancelScheduledValues(time);
+          duck.gain.setValueAtTime(0.2, time);
+          duck.gain.linearRampToValueAtTime(1, time + Math.min(0.16, stepSec * 1.6));
+        }
       }
     }
 

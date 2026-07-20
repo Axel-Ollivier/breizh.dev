@@ -4,6 +4,7 @@ import { subscribeWithSelector } from 'zustand/middleware';
 import {
   clamp,
   clearStepPitch,
+  copyMeasure,
   createPattern,
   DEFAULT_VELOCITY,
   GATE_LEVELS,
@@ -11,9 +12,11 @@ import {
   resizePattern,
   setStepBend,
   setStepGate,
+  setStepLen,
   setStepPitch,
   setStepVariant,
   setStepVelocity,
+  setTrackDrive,
   setTrackFollow,
   setTrackInstrument,
   setTrackMute,
@@ -85,6 +88,14 @@ interface AwenState {
   /** Toggle « suivre la mélodie » d'une piste kick. */
   setKickFollow: (trackId: string, followTrackId: string | undefined) => void;
   setTrackInstrument: (trackId: string, instrumentId: string) => void;
+  setTrackDrive: (trackId: string, drive: number) => void;
+  /** Durée d'une note mélodique en pas (drag). */
+  setStepLength: (trackId: string, stepIndex: number, len: number) => void;
+  /** Copie la mesure source vers la cible (toutes pistes). */
+  copyMeasureAction: (from: number, to: number) => void;
+  /** Ducking des leads contre le kick. */
+  ducking: boolean;
+  setDucking: (ducking: boolean) => void;
   setTrackVolume: (trackId: string, volume: number) => void;
   setTrackMute: (trackId: string, mute: boolean) => void;
   setTrackSolo: (trackId: string, solo: boolean) => void;
@@ -187,6 +198,18 @@ export const useAwenStore = create<AwenState>()(
       set({ pattern: setTrackFollow(get().pattern, trackId, followTrackId) }),
     setTrackInstrument: (trackId, instrumentId) =>
       set({ pattern: setTrackInstrument(get().pattern, trackId, instrumentId) }),
+    setTrackDrive: (trackId, drive) => {
+      if (!Number.isFinite(drive)) return;
+      set({ pattern: setTrackDrive(get().pattern, trackId, drive) });
+    },
+    setStepLength: (trackId, stepIndex, len) => {
+      const step = get().pattern.tracks.find((t) => t.id === trackId)?.steps[stepIndex];
+      if (!step?.on) return;
+      set({ pattern: setStepLen(get().pattern, trackId, stepIndex, len) });
+    },
+    copyMeasureAction: (from, to) => set({ pattern: copyMeasure(get().pattern, from, to) }),
+    ducking: true,
+    setDucking: (ducking) => set({ ducking }),
     setTrackVolume: (trackId, volume) => {
       if (!Number.isFinite(volume)) return;
       set({ pattern: setTrackVolume(get().pattern, trackId, volume) });

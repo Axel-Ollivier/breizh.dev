@@ -55,6 +55,21 @@ export function TrackControls({ trackId }: { trackId: string }) {
           className="h-1 w-16 accent-[#2A7AAA]"
         />
       </label>
+      <label
+        className="flex items-center gap-1"
+        title={`Distorsion : ${Math.round(track.drive * 100)} %`}
+      >
+        <span className="text-[9px] uppercase text-ink/40">dist</span>
+        <input
+          type="range"
+          min={0}
+          max={1}
+          step={0.01}
+          value={track.drive}
+          onChange={(e) => useAwenStore.getState().setTrackDrive(trackId, e.target.valueAsNumber)}
+          className="h-1 w-16 accent-[#2A9B77]"
+        />
+      </label>
     </div>
   );
 }

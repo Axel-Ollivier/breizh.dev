@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
 import { audioEngine } from '../audio/AudioEngine';
 import { PATTERN_LENGTHS, type PatternLength } from '../engine/pattern';
@@ -21,6 +21,9 @@ export function TransportBar() {
   // Brouillon local : la valeur n'est clampée/commitée qu'au blur ou à Entrée,
   // sinon un input contrôlé clampé à la frappe rend le BPM intapable.
   const [bpmDraft, setBpmDraft] = useState<string | null>(null);
+  const copyFrom = useRef<HTMLSelectElement>(null);
+  const copyTo = useRef<HTMLSelectElement>(null);
+  const measures = lengthSteps / 16;
 
   const commitBpm = () => {
     if (bpmDraft !== null) useAwenStore.getState().setBpm(Number(bpmDraft));
@@ -125,6 +128,51 @@ export function TransportBar() {
           ))}
         </div>
       </div>
+
+      {measures > 1 && (
+        <div className="flex flex-col gap-0.5">
+          <span className="text-[10px] uppercase tracking-widest text-ink/50">Copier mesure</span>
+          <div className="flex items-center gap-1">
+            <select
+              ref={copyFrom}
+              aria-label="Mesure source"
+              defaultValue={0}
+              className="rounded border border-ink/20 bg-surface px-1 py-1 font-mono text-xs text-ink focus:border-moss focus:outline-none"
+            >
+              {Array.from({ length: measures }, (_, m) => (
+                <option key={m} value={m}>
+                  {m + 1}
+                </option>
+              ))}
+            </select>
+            <span className="text-xs text-ink/40">→</span>
+            <select
+              ref={copyTo}
+              aria-label="Mesure cible"
+              defaultValue={1}
+              className="rounded border border-ink/20 bg-surface px-1 py-1 font-mono text-xs text-ink focus:border-moss focus:outline-none"
+            >
+              {Array.from({ length: measures }, (_, m) => (
+                <option key={m} value={m}>
+                  {m + 1}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              aria-label="Copier la mesure"
+              onClick={() => {
+                const from = Number(copyFrom.current?.value ?? 0);
+                const to = Number(copyTo.current?.value ?? 0);
+                if (from !== to) useAwenStore.getState().copyMeasureAction(from, to);
+              }}
+              className="rounded border border-ink/20 px-2 py-1 text-xs text-ink/70 transition-colors hover:border-moss hover:text-ink"
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

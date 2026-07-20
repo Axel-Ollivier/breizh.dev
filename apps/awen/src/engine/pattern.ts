@@ -21,6 +21,8 @@ export interface Step {
   bend?: number;
   /** Kick uniquement : variante d'instrument du pas (0..2 — preset synthé ou slot sampler). */
   variant?: number;
+  /** Mélodique uniquement : durée de la note en pas (≥ 2 ; absent = 1 pas). */
+  len?: number;
 }
 
 /** Durées de kick cyclées par alt+clic (1 = naturelle). */
@@ -46,6 +48,8 @@ export interface Track {
   solo: boolean;
   /** [0, 1], niveau vers le bus send */
   sendFx: number;
+  /** [0, 1], distorsion de la piste (0 = bypass) */
+  drive: number;
   /** Plage de degrés autorisée — pistes melodic et kick uniquement. */
   pitchRange?: PitchRange;
   /** Kick uniquement : lit les pitchs sur cette piste mélodique au lieu de la pitch lane. */
@@ -62,6 +66,7 @@ export interface TrackDef {
   kind: TrackKind;
   instrumentId: string;
   pitchRange?: PitchRange;
+  drive?: number;
 }
 
 export const DEFAULT_VELOCITY = 0.8;
@@ -86,6 +91,7 @@ export function createPattern(lengthSteps: PatternLength, trackDefs: TrackDef[])
       mute: false,
       solo: false,
       sendFx: 0,
+      drive: def.drive !== undefined ? clamp(def.drive, 0, 1) : 0,
       ...(def.pitchRange !== undefined ? { pitchRange: def.pitchRange } : {}),
     })),
   };
@@ -339,6 +345,59 @@ export function setTrackSend(pattern: Pattern, trackId: string, sendFx: number):
   }));
 }
 
+export function setTrackDrive(pattern: Pattern, trackId: string, drive: number): Pattern {
+  if (!Number.isFinite(drive)) throw new Error(`Drive non fini : ${drive}`);
+  return withTrack(pattern, trackId, (track) => ({
+    ...track,
+    drive: clamp(drive, 0, 1),
+  }));
+}
+
+/** Durée d'une note mélodique en pas (1 = retire le champ). */
+export function setStepLen(
+  pattern: Pattern,
+  trackId: string,
+  stepIndex: number,
+  len: number,
+): Pattern {
+  if (!Number.isInteger(len) || len < 1) throw new Error(`Durée invalide : ${len}`);
+  return withStep(pattern, trackId, stepIndex, (step, track) => {
+    if (track.kind !== 'melodic') {
+      throw new Error(`setStepLen réservé aux pistes mélodiques (${track.id})`);
+    }
+    const capped = Math.min(len, pattern.lengthSteps - stepIndex);
+    const { len: _drop, ...rest } = step;
+    return capped <= 1 ? rest : { ...rest, len: capped };
+  });
+}
+
+/** Copie une mesure (16 pas) vers une autre, toutes pistes confondues. */
+export function copyMeasure(pattern: Pattern, fromMeasure: number, toMeasure: number): Pattern {
+  const measures = pattern.lengthSteps / 16;
+  if (
+    !Number.isInteger(fromMeasure) ||
+    !Number.isInteger(toMeasure) ||
+    fromMeasure < 0 ||
+    toMeasure < 0 ||
+    fromMeasure >= measures ||
+    toMeasure >= measures
+  ) {
+    throw new Error(`Mesure hors pattern : ${fromMeasure} -> ${toMeasure}`);
+  }
+  if (fromMeasure === toMeasure) return pattern;
+  return {
+    ...pattern,
+    tracks: pattern.tracks.map((track) => ({
+      ...track,
+      steps: track.steps.map((step, i) => {
+        const measure = Math.floor(i / 16);
+        if (measure !== toMeasure) return step;
+        return { ...track.steps[fromMeasure * 16 + (i % 16)]! };
+      }),
+    })),
+  };
+}
+
 /**
  * Pitch effectif d'un pas de kick (SPECS §1.3) : pitch propre, sinon — si la
  * piste suit une piste mélodique — dernière note démarrée ≤ pas dans la mesure,
@@ -435,6 +494,18 @@ export function validatePattern(pattern: Pattern): string[] {
         if (!Number.isInteger(step.variant) || step.variant < 0 || step.variant >= KICK_VARIANTS) {
           errors.push(`${track.id}[${i}]: variant ${step.variant} hors [0, ${KICK_VARIANTS - 1}]`);
         }
+      }
+      if (step.len !== undefined) {
+        if (track.kind !== 'melodic') {
+          errors.push(`${track.id}[${i}]: len sur une piste ${track.kind}`);
+        }
+        if (!Number.isInteger(step.len) || step.len < 2 || i + step.len > pattern.lengthSteps) {
+          errors.push(`${track.id}[${i}]: len ${step.len} invalide`);
+        }
+      }
+      if (!(track.drive >= 0 && track.drive <= 1)) {
+        // vérifié une fois par piste via le premier pas pour rester dans la boucle
+        if (i === 0) errors.push(`${track.id}: drive ${track.drive} hors [0, 1]`);
       }
     });
   }

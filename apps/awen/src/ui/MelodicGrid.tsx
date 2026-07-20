@@ -1,3 +1,5 @@
+import { useRef, type PointerEvent as ReactPointerEvent } from 'react';
+
 import { DEFAULT_VELOCITY } from '../engine/pattern';
 import { degreeLabel } from '../engine/scales';
 import { useAwenStore } from '../state/store';
@@ -7,26 +9,107 @@ import { TrackControls } from './TrackControls';
 
 const TRACK_ID = 'melody';
 
+const LEADS = [
+  { value: 'supersaw', label: 'supersaw' },
+  { value: 'square', label: 'square lead' },
+  { value: 'pluck', label: 'pluck' },
+  { value: 'screech', label: 'screech' },
+];
+
+interface DragState {
+  degree: number;
+  startCol: number;
+  moved: boolean;
+}
+
 /**
  * Piste mélodique : lignes = degrés de la gamme (aigus en haut), colonnes =
- * double-croches. Snap gamme par construction (SPECS §1.2).
+ * double-croches. Snap gamme par construction (SPECS §1.2). Drag horizontal
+ * depuis une note = durée (notes tenues) ; clic sans mouvement = geste
+ * habituel de la cellule.
  */
 export function MelodicGrid() {
   const track = useAwenStore((s) => s.pattern.tracks.find((t) => t.id === TRACK_ID));
   const lengthSteps = useAwenStore((s) => s.pattern.lengthSteps);
   const scale = useAwenStore((s) => s.scale);
+  const ducking = useAwenStore((s) => s.ducking);
+  const drag = useRef<DragState | null>(null);
+  const suppressClick = useRef(false);
 
   if (!track?.pitchRange) return null;
   const { min, max } = track.pitchRange;
   const degrees: number[] = [];
   for (let d = max; d >= min; d--) degrees.push(d);
 
+  const colFromEvent = (e: ReactPointerEvent<HTMLDivElement>): number => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const ratio = (e.clientX - rect.left) / rect.width;
+    return Math.max(0, Math.min(lengthSteps - 1, Math.floor(ratio * lengthSteps)));
+  };
+
+  const onRowPointerDown = (degree: number) => (e: ReactPointerEvent<HTMLDivElement>) => {
+    const col = colFromEvent(e);
+    const step = track.steps[col];
+    if (step?.on && step.pitch === degree) {
+      drag.current = { degree, startCol: col, moved: false };
+      e.currentTarget.setPointerCapture(e.pointerId);
+    }
+  };
+
+  const onRowPointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const state = drag.current;
+    if (!state) return;
+    const col = colFromEvent(e);
+    const len = Math.max(1, col - state.startCol + 1);
+    const current = track.steps[state.startCol]?.len ?? 1;
+    if (col !== state.startCol) state.moved = true;
+    if (len !== current) {
+      useAwenStore.getState().setStepLength(TRACK_ID, state.startCol, len);
+    }
+  };
+
+  const onRowPointerUp = () => {
+    if (drag.current?.moved) suppressClick.current = true;
+    drag.current = null;
+  };
+
+  // Continuations des notes tenues, précalculées une fois par rendu.
+  const contByStep = new Array<number | null>(lengthSteps).fill(null);
+  track.steps.forEach((step, i) => {
+    if (step.on && step.pitch !== undefined && (step.len ?? 1) > 1) {
+      for (let j = i + 1; j < Math.min(i + step.len!, lengthSteps); j++) {
+        contByStep[j] = step.pitch;
+      }
+    }
+  });
+
   return (
     <section aria-label="Piste mélodique" className="flex flex-col gap-1">
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <h2 className="font-display text-sm font-black italic uppercase tracking-wider text-moss">
-          Mélodie <span className="text-ink/40">· supersaw</span>
+          Mélodie
         </h2>
+        <select
+          aria-label="Instrument de la mélodie"
+          value={track.instrumentId}
+          onChange={(e) => useAwenStore.getState().setTrackInstrument(TRACK_ID, e.target.value)}
+          className="rounded border border-ink/20 bg-surface px-1.5 py-0.5 text-xs text-ink focus:border-moss focus:outline-none"
+        >
+          {LEADS.map((l) => (
+            <option key={l.value} value={l.value}>
+              {l.label}
+            </option>
+          ))}
+        </select>
+        <label className="flex items-center gap-1.5 text-xs text-ink/70" title="Le lead plonge à chaque kick">
+          <input
+            type="checkbox"
+            checked={ducking}
+            onChange={(e) => useAwenStore.getState().setDucking(e.target.checked)}
+            className="accent-[#2A9B77]"
+          />
+          ducking
+        </label>
         <div className="ml-auto">
           <TrackControls trackId={TRACK_ID} />
         </div>
@@ -44,13 +127,26 @@ export function MelodicGrid() {
             </div>
           ))}
         </div>
-        <div className="relative flex-1">
+        <div
+          className="relative flex-1"
+          onClickCapture={(e) => {
+            if (suppressClick.current) {
+              suppressClick.current = false;
+              e.preventDefault();
+              e.stopPropagation();
+            }
+          }}
+        >
           <div className="flex flex-col gap-px">
             {degrees.map((degree) => (
               <div
                 key={degree}
-                className="grid gap-px"
+                className="grid touch-none gap-px"
                 style={{ gridTemplateColumns: `repeat(${lengthSteps}, minmax(0, 1fr))` }}
+                onPointerDown={onRowPointerDown(degree)}
+                onPointerMove={onRowPointerMove}
+                onPointerUp={onRowPointerUp}
+                onPointerCancel={onRowPointerUp}
               >
                 {track.steps.map((step, i) => {
                   const on = step.on && step.pitch === degree;
@@ -59,8 +155,8 @@ export function MelodicGrid() {
                       key={i}
                       ariaLabel={`Pas ${i + 1}, degré ${degree}`}
                       on={on}
-                      // vel stable (0) sur les cellules éteintes, sinon un
-                      // changement de vélocité re-rendrait toute la colonne.
+                      cont={!on && contByStep[i] === degree}
+                      hasTail={on && (step.len ?? 1) > 1}
                       vel={on ? (step.vel ?? DEFAULT_VELOCITY) : 0}
                       beatStart={i % 4 === 0}
                       onActivate={(shift) => {
@@ -78,7 +174,7 @@ export function MelodicGrid() {
         </div>
       </div>
       <p className="pl-12 text-[10px] text-ink/30">
-        clic : poser / déplacer / effacer — shift+clic : vélocité
+        clic : poser / déplacer / effacer — shift+clic : vélocité — drag depuis une note : durée
       </p>
     </section>
   );
