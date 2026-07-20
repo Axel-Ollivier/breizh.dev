@@ -92,6 +92,9 @@ class AudioEngine {
         (s) => s.bpm,
         (bpm) => {
           Tone.getTransport().bpm.value = bpm;
+          // La notation '8n.' est convertie en secondes au moment du set :
+          // on recale le delay sur le nouveau tempo.
+          if (this.fxDelay) this.fxDelay.delayTime.value = Tone.Time('8n.').toSeconds();
         },
       ),
       useAwenStore.subscribe(

@@ -24,6 +24,11 @@ import {
   type Pattern,
   type PatternLength,
 } from '../engine/pattern';
+import { deriveKickPitches } from '../engine/bassline';
+import { euclidToTrack } from '../engine/euclid';
+import { generateMelody, type MelodyCharacter, type WriteMode } from '../engine/markov';
+import { mutatePattern } from '../engine/mutate';
+import { hashSeed, streamRng } from '../engine/prng';
 import { DEFAULT_SCALE, type Scale } from '../engine/scales';
 
 export const BPM_MIN = 140;
@@ -87,6 +92,24 @@ interface AwenState {
   /** Noms des samples de kick par slot (les buffers vivent dans le moteur audio). */
   kickSampleNames: Array<string | null>;
   setKickSampleName: (slot: number, name: string | null) => void;
+
+  // Générateurs (SPECS §3) — même seed + mêmes actions = même pattern.
+  seed: number;
+  /** Compteur d'actions génératrices (flux dérivé par action). */
+  actionCounter: number;
+  character: MelodyCharacter;
+  setSeed: (seed: number) => void;
+  /** Nouveau seed dérivé déterministiquement du courant (R). */
+  newSeed: () => void;
+  setCharacter: (character: MelodyCharacter) => void;
+  /** Markov -> piste mélodique (G = replace). */
+  generateMelodyAction: (writeMode: WriteMode) => void;
+  /** Fondamentales/quintes de la mélodie -> pitchs des kicks actifs. */
+  deriveBasslineAction: () => void;
+  /** Presets euclidiens : clap 2&4, hats double-croches off, ride croches off. */
+  euclidPercsAction: () => void;
+  /** Perturbation contrôlée (M). */
+  mutateAction: () => void;
 }
 
 export const useAwenStore = create<AwenState>()(
@@ -179,5 +202,43 @@ export const useAwenStore = create<AwenState>()(
       set({
         kickSampleNames: get().kickSampleNames.map((n, i) => (i === slot ? name : n)),
       }),
+
+    seed: 4242,
+    actionCounter: 0,
+    character: 'euphorique',
+    setSeed: (seed) => {
+      if (!Number.isFinite(seed)) return;
+      set({ seed: Math.abs(Math.round(seed)) >>> 0, actionCounter: 0 });
+    },
+    newSeed: () => set({ seed: hashSeed(get().seed, 0x5eed), actionCounter: 0 }),
+    setCharacter: (character) => set({ character }),
+    generateMelodyAction: (writeMode) => {
+      const { pattern, seed, actionCounter, character } = get();
+      set({
+        pattern: generateMelody(
+          pattern,
+          'melody',
+          { character, writeMode },
+          streamRng(seed, actionCounter),
+        ),
+        actionCounter: actionCounter + 1,
+      });
+    },
+    deriveBasslineAction: () =>
+      set({ pattern: deriveKickPitches(get().pattern, 'kick', 'melody', { useFifths: true }) }),
+    euclidPercsAction: () => {
+      let { pattern } = get();
+      pattern = euclidToTrack(pattern, 'clap', 2, 3); // 2 & 4
+      pattern = euclidToTrack(pattern, 'hats', 8, 0); // doubles-croches off
+      pattern = euclidToTrack(pattern, 'ride', 4, 1); // croches off
+      set({ pattern });
+    },
+    mutateAction: () => {
+      const { pattern, seed, actionCounter } = get();
+      set({
+        pattern: mutatePattern(pattern, { intensity: 0.1 }, streamRng(seed, actionCounter)),
+        actionCounter: actionCounter + 1,
+      });
+    },
   })),
 );

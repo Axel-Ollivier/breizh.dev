@@ -43,14 +43,14 @@ de review. Un commit par étape cohérente. MVP = fin de phase 4.
 
 ## Phase 4 — Générateurs *(= MVP)*
 
-- [ ] `engine/prng.ts` : mulberry32 + dérivation de flux (seed + compteur d'actions) + tests
-- [ ] `engine/markov.ts` : matrices euphorique/dark/erratique, modes remplacer/compléter + tests (SPECS §3.2)
-- [ ] `engine/bassline.ts` : mélodie → pitchs de kicks (fondamentales/quintes par mesure) + tests
-- [ ] `engine/euclid.ts` : Bjorklund + tests
-- [ ] `engine/mutate.ts` : perturbation contrôlée + tests (densité bornée, gamme respectée)
-- [ ] Seed global affiché/saisissable ; invariant de reproductibilité testé (même seed + mêmes actions = même pattern)
-- [ ] Boutons UI : Générer mélodie, Bassline → kicks, Euclide percus, Mutate ; raccourcis `G`/`M`/`R`
-- [ ] Vérif Definition of done du MVP (brief) + commit + review
+- [x] `engine/prng.ts` : mulberry32 + dérivation de flux (seed + compteur d'actions) + tests
+- [x] `engine/markov.ts` : matrices euphorique/dark/erratique, modes remplacer/compléter + tests (SPECS §3.2)
+- [x] `engine/bassline.ts` : mélodie → pitchs de kicks (fondamentales/quintes par mesure) + tests
+- [x] `engine/euclid.ts` : Bjorklund + tests
+- [x] `engine/mutate.ts` : perturbation contrôlée + tests (densité bornée, gamme respectée)
+- [x] Seed global affiché/saisissable ; invariant de reproductibilité testé (même seed + mêmes actions = même pattern)
+- [x] Boutons UI : Générer mélodie, Bassline → kicks, Euclide percus, Mutate ; raccourcis `G`/`M`/`R`
+- [x] Vérif Definition of done du MVP (brief) + commit + review
 
 ## Phase 5 — Sound design & polish
 
