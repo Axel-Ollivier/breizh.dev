@@ -25,6 +25,9 @@ jobs:
           - name: prout
             context: apps/prout
             dockerfile: apps/prout/Dockerfile
+          - name: krampouezh
+            context: apps/krampouezh
+            dockerfile: apps/krampouezh/Dockerfile
 
     steps:
       - name: Checkout

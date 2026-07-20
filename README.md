@@ -91,7 +91,10 @@ géré par **Traefik** (labels Docker dans `docker-compose.prod.yml`).
 
 ```
 apps/
-└── prout/               → prout.breizh.dev (page statique, servie par nginx)
+├── prout/               → prout.breizh.dev (page statique, servie par nginx)
+│   ├── index.html
+│   └── Dockerfile
+└── krampouezh/          → krampouezh.breizh.dev (jeu d'empilement de crêpes, canvas)
     ├── index.html
     └── Dockerfile
 ```
