@@ -7,6 +7,12 @@ export interface ResolvedStep {
   midi: number;
   /** Vélocité effective [0, 1] (défaut déjà appliqué). */
   velocity: number;
+  /** Durée imposée en secondes (kicks courts / rolls) ; absente = durée naturelle. */
+  durationSec?: number;
+  /** Pitch bend court en demi-tons : départ à midi+bend, glissé vers midi. */
+  bendSemitones?: number;
+  /** Variante d'instrument (0..2) ; absente = 0. */
+  variant?: number;
 }
 
 export interface Instrument {

@@ -1,60 +1,97 @@
 import { memo, useRef } from 'react';
 
 import { audioEngine } from '../audio/AudioEngine';
+import { DEFAULT_VELOCITY } from '../engine/pattern';
+import { degreeLabel } from '../engine/scales';
 import { useAwenStore } from '../state/store';
 import { Playhead } from './Playhead';
 import { StepCell } from './StepCell';
 import { TrackControls } from './TrackControls';
 
 const TRACK_ID = 'kick';
+const SLOT_LABELS = ['A', 'B', 'C'] as const;
 
-interface PitchCellProps {
+interface KickCellProps {
   stepIndex: number;
   on: boolean;
-  /** Degré affiché (0 = tonique) ; ignoré quand off. */
-  pitch: number;
+  vel: number;
+  gate: number;
+  bend: number;
+  variant: number;
   beatStart: boolean;
 }
 
-/** Sous-lane de pitch : molette = ±1 degré (snap gamme par construction). */
-const PitchCell = memo(function PitchCell({ stepIndex, on, pitch, beatStart }: PitchCellProps) {
+/**
+ * Cellule de kick expressive : clic = toggle, shift = vélocité,
+ * alt = durée (rolls), ctrl/cmd = variante A/B/C, molette = bend.
+ * Rendu : remplissage = gate, opacité = vélocité, badges variante et bend.
+ */
+const KickCell = memo(function KickCell({
+  stepIndex,
+  on,
+  vel,
+  gate,
+  bend,
+  variant,
+  beatStart,
+}: KickCellProps) {
   return (
-    <div
-      role={on ? 'spinbutton' : undefined}
-      aria-label={on ? `Pitch du pas kick ${stepIndex + 1}` : undefined}
-      aria-valuenow={on ? pitch : undefined}
-      tabIndex={on ? 0 : -1}
+    <button
+      type="button"
+      aria-label={`Pas kick ${stepIndex + 1}`}
+      aria-pressed={on}
+      onClick={(e) => {
+        const s = useAwenStore.getState();
+        if (e.altKey) s.cycleStepGate(TRACK_ID, stepIndex);
+        else if (e.ctrlKey || e.metaKey) s.cycleStepVariant(TRACK_ID, stepIndex);
+        else if (e.shiftKey) s.cycleStepVelocity(TRACK_ID, stepIndex);
+        else s.toggleLaneStep(TRACK_ID, stepIndex);
+      }}
       onWheel={(e) => {
-        if (!on) return;
-        useAwenStore.getState().adjustKickPitch(TRACK_ID, stepIndex, e.deltaY < 0 ? 1 : -1);
+        if (on) useAwenStore.getState().adjustStepBend(TRACK_ID, stepIndex, e.deltaY < 0 ? 1 : -1);
       }}
-      onKeyDown={(e) => {
-        if (!on) return;
-        if (e.key === 'ArrowUp') useAwenStore.getState().adjustKickPitch(TRACK_ID, stepIndex, 1);
-        if (e.key === 'ArrowDown') useAwenStore.getState().adjustKickPitch(TRACK_ID, stepIndex, -1);
-      }}
-      className={`flex h-5 w-full select-none items-center justify-center rounded-[3px] border font-mono text-[9px] leading-none ${
-        on
-          ? 'cursor-ns-resize border-wave/60 bg-wave/20 text-wave'
-          : `border-ink/5 text-transparent ${beatStart ? 'bg-ink/10' : 'bg-ink/5'}`
+      className={`relative h-8 w-full overflow-hidden rounded-[3px] border transition-colors ${
+        on ? 'border-wave' : `border-ink/10 hover:border-wave/60 ${beatStart ? 'bg-ink/10' : 'bg-ink/5'}`
       }`}
     >
-      {on ? (pitch > 0 ? `+${pitch}` : pitch) : '·'}
-    </div>
+      {on && (
+        <span
+          aria-hidden
+          className="absolute inset-y-0 left-0 bg-wave"
+          style={{ width: `${gate * 100}%`, opacity: 0.35 + 0.65 * vel }}
+        />
+      )}
+      {on && variant > 0 && (
+        <span className="absolute left-0.5 top-0 font-mono text-[8px] font-bold leading-3 text-ink">
+          {SLOT_LABELS[variant]}
+        </span>
+      )}
+      {on && bend !== 0 && (
+        <span className="absolute bottom-0 right-0.5 font-mono text-[8px] leading-3 text-ink">
+          {bend > 0 ? `↗${bend}` : `↘${-bend}`}
+        </span>
+      )}
+    </button>
   );
 });
 
 export function KickSection() {
   const track = useAwenStore((s) => s.pattern.tracks.find((t) => t.id === TRACK_ID));
   const lengthSteps = useAwenStore((s) => s.pattern.lengthSteps);
-  const kickSampleName = useAwenStore((s) => s.kickSampleName);
+  const scale = useAwenStore((s) => s.scale);
+  const kickSampleNames = useAwenStore((s) => s.kickSampleNames);
   const fileInput = useRef<HTMLInputElement>(null);
+  const dropSlot = useRef(0);
 
-  if (!track) return null;
+  if (!track?.pitchRange) return null;
   const follows = track.followTrackId !== undefined;
+  const anySample = kickSampleNames.some(Boolean);
+  const { min, max } = track.pitchRange;
+  const degrees: number[] = [];
+  for (let d = max; d >= min; d--) degrees.push(d);
 
-  const loadFile = (file: File | undefined) => {
-    if (file) void audioEngine.loadKickSample(file);
+  const loadFile = (file: File | undefined, slot: number) => {
+    if (file) void audioEngine.loadKickSample(file, slot);
   };
 
   const gridCols = { gridTemplateColumns: `repeat(${lengthSteps}, minmax(0, 1fr))` };
@@ -66,7 +103,7 @@ export function KickSection() {
       onDragOver={(e) => e.preventDefault()}
       onDrop={(e) => {
         e.preventDefault();
-        loadFile(e.dataTransfer.files[0]);
+        loadFile(e.dataTransfer.files[0], dropSlot.current);
       }}
     >
       <div className="flex flex-wrap items-center gap-3">
@@ -79,25 +116,39 @@ export function KickSection() {
           onChange={(e) => useAwenStore.getState().setTrackInstrument(TRACK_ID, e.target.value)}
           className="rounded border border-ink/20 bg-surface px-1.5 py-0.5 text-xs text-ink focus:border-moss focus:outline-none"
         >
-          <option value="kick-synth">synthé</option>
-          <option value="kick-sampler" disabled={!kickSampleName}>
-            sampler{kickSampleName ? ` · ${kickSampleName}` : ' (importer un sample)'}
+          <option value="kick-synth">synthé (A punch · B tight · C boom)</option>
+          <option value="kick-sampler" disabled={!anySample}>
+            sampler{anySample ? '' : ' (importer un sample)'}
           </option>
         </select>
-        <button
-          type="button"
-          onClick={() => fileInput.current?.click()}
-          className="rounded border border-dashed border-ink/30 px-2 py-0.5 text-xs text-ink/60 hover:border-moss hover:text-ink"
-        >
-          importer un sample (ou glisser ici)
-        </button>
+        <div className="flex items-center gap-1" role="group" aria-label="Slots de samples">
+          {SLOT_LABELS.map((label, slot) => (
+            <button
+              key={label}
+              type="button"
+              title={kickSampleNames[slot] ?? `Importer un sample dans le slot ${label}`}
+              onClick={() => {
+                dropSlot.current = slot;
+                fileInput.current?.click();
+              }}
+              className={`rounded border px-1.5 py-0.5 font-mono text-[10px] transition-colors ${
+                kickSampleNames[slot]
+                  ? 'border-moss/60 text-moss'
+                  : 'border-dashed border-ink/30 text-ink/50 hover:border-moss hover:text-ink'
+              }`}
+            >
+              {label}
+              {kickSampleNames[slot] ? ' ●' : ' +'}
+            </button>
+          ))}
+        </div>
         <input
           ref={fileInput}
           type="file"
           accept="audio/*"
           className="hidden"
           onChange={(e) => {
-            loadFile(e.target.files?.[0]);
+            loadFile(e.target.files?.[0], dropSlot.current);
             e.target.value = '';
           }}
         />
@@ -120,50 +171,78 @@ export function KickSection() {
       </div>
 
       <div className="flex gap-2">
-        <div className="flex w-10 flex-col justify-center gap-px">
-          <span className="text-right font-mono text-[10px] text-ink/40">kick</span>
-          {!follows && <span className="text-right font-mono text-[10px] text-wave/60">pitch</span>}
+        <div className="flex w-10 items-center justify-end pr-1">
+          <span className="font-mono text-[10px] text-ink/40">kick</span>
         </div>
         <div className="relative flex-1">
-          <div className="flex flex-col gap-px">
-            <div className="grid gap-px" style={gridCols}>
-              {track.steps.map((step, i) => (
-                <StepCell
-                  key={i}
-                  ariaLabel={`Pas kick ${i + 1}`}
-                  on={step.on}
-                  vel={step.on ? (step.vel ?? 0.8) : 0}
-                  beatStart={i % 4 === 0}
-                  tall
-                  accent="wave"
-                  onActivate={(shift) => {
-                    const s = useAwenStore.getState();
-                    if (shift) s.cycleStepVelocity(TRACK_ID, i);
-                    else s.toggleLaneStep(TRACK_ID, i);
-                  }}
-                />
-              ))}
-            </div>
-            {!follows && (
-              <div className="grid gap-px" style={gridCols}>
-                {track.steps.map((step, i) => (
-                  <PitchCell
-                    key={i}
-                    stepIndex={i}
-                    on={step.on}
-                    pitch={step.pitch ?? 0}
-                    beatStart={i % 4 === 0}
-                  />
-                ))}
-              </div>
-            )}
+          <div className="grid gap-px" style={gridCols}>
+            {track.steps.map((step, i) => (
+              <KickCell
+                key={i}
+                stepIndex={i}
+                on={step.on}
+                vel={step.on ? (step.vel ?? DEFAULT_VELOCITY) : 0}
+                gate={step.on ? (step.gate ?? 1) : 0}
+                bend={step.on ? (step.bend ?? 0) : 0}
+                variant={step.on ? (step.variant ?? 0) : 0}
+                beatStart={i % 4 === 0}
+              />
+            ))}
           </div>
           <Playhead lengthSteps={lengthSteps} />
         </div>
       </div>
+      <p className="pl-12 text-[10px] text-ink/30">
+        clic : kick — shift : vélocité — alt : durée (roll) — ctrl/cmd : variante A/B/C — molette :
+        bend
+      </p>
+
+      {!follows && (
+        <div className="flex gap-2">
+          <div className="flex flex-col gap-px">
+            {degrees.map((degree) => (
+              <div
+                key={degree}
+                className={`flex h-4 w-10 items-center justify-end pr-1 font-mono text-[9px] leading-none ${
+                  degree % 7 === 0 ? 'text-wave' : 'text-ink/40'
+                }`}
+              >
+                {degreeLabel(scale, degree)}
+              </div>
+            ))}
+          </div>
+          <div className="relative flex-1">
+            <div className="flex flex-col gap-px">
+              {degrees.map((degree) => (
+                <div key={degree} className="grid gap-px" style={gridCols}>
+                  {track.steps.map((step, i) => {
+                    const on = step.on && step.pitch === degree;
+                    return (
+                      <StepCell
+                        key={i}
+                        ariaLabel={`Pitch kick pas ${i + 1}, degré ${degree}`}
+                        on={on}
+                        vel={on ? (step.vel ?? DEFAULT_VELOCITY) : 0}
+                        beatStart={i % 4 === 0}
+                        accent="wave"
+                        small
+                        onActivate={() =>
+                          useAwenStore.getState().clickKickPitchCell(TRACK_ID, i, degree)
+                        }
+                      />
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+            <Playhead lengthSteps={lengthSteps} />
+          </div>
+        </div>
+      )}
       {!follows && (
         <p className="pl-12 text-[10px] text-ink/30">
-          molette (ou ↑↓) sur la ligne pitch : degré du kick — 0 = tonique
+          piano-roll du kick : clic = poser / déplacer / retirer la hauteur (sans hauteur, le kick
+          joue la tonique)
         </p>
       )}
     </section>

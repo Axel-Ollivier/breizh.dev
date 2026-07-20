@@ -10,11 +10,11 @@ import { degreeToMidi } from '../engine/scales';
 import { useAwenStore } from '../state/store';
 import { Clap } from './instruments/Clap';
 import { Hats } from './instruments/Hats';
-import { KickSampler } from './instruments/KickSampler';
+import { KICK_SLOTS, KickSampler } from './instruments/KickSampler';
 import { KickSynth } from './instruments/KickSynth';
 import { Ride } from './instruments/Ride';
 import { SupersawLead } from './instruments/SupersawLead';
-import type { Instrument } from './instruments/types';
+import type { Instrument, ResolvedStep } from './instruments/types';
 
 interface TrackNodes {
   instrumentId: string;
@@ -52,7 +52,10 @@ class AudioEngine {
   private fxInput: Tone.Gain | null = null;
   private fxDelay: Tone.FeedbackDelay | null = null;
   private fxReverb: Tone.Reverb | null = null;
-  private kickBuffer: Tone.ToneAudioBuffer | null = null;
+  private kickBuffers: Array<Tone.ToneAudioBuffer | null> = Array.from(
+    { length: KICK_SLOTS },
+    () => null,
+  );
   private unsubscribers: Array<() => void> = [];
   private stepListeners = new Set<(step: number) => void>();
 
@@ -143,9 +146,9 @@ class AudioEngine {
       case 'kick-synth':
         return new KickSynth(destination);
       case 'kick-sampler': {
-        if (!this.kickBuffer) return null;
+        if (!this.kickBuffers.some(Boolean)) return null;
         const tonic = degreeToMidi(useAwenStore.getState().scale, 0);
-        return new KickSampler(destination, this.kickBuffer, tonic);
+        return new KickSampler(destination, this.kickBuffers, tonic);
       }
       case 'clap':
         return new Clap(destination);
@@ -159,27 +162,33 @@ class AudioEngine {
   }
 
   /**
-   * Importe un sample de kick (drag & drop / input fichier), bascule la piste
-   * kick sur le sampler. Le drop est un geste utilisateur : l'init est permise.
+   * Importe un sample de kick dans un slot (drag & drop / input fichier) et
+   * bascule la piste kick sur le sampler. Le drop est un geste utilisateur :
+   * l'init est permise. Ne rejette jamais (erreur de décodage loguée).
    */
-  async loadKickSample(file: File): Promise<void> {
-    await this.ensureInitialized();
-    const arrayBuffer = await file.arrayBuffer();
-    const audioBuffer = await Tone.getContext().rawContext.decodeAudioData(arrayBuffer);
-    this.kickBuffer = new Tone.ToneAudioBuffer(audioBuffer);
+  async loadKickSample(file: File, slot = 0): Promise<void> {
+    try {
+      await this.ensureInitialized();
+      const arrayBuffer = await file.arrayBuffer();
+      const audioBuffer = await Tone.getContext().rawContext.decodeAudioData(arrayBuffer);
+      const buffer = new Tone.ToneAudioBuffer(audioBuffer);
+      this.kickBuffers[slot] = buffer;
 
-    const store = useAwenStore.getState();
-    store.setKickSampleName(file.name);
-    const kick = store.pattern.tracks.find((t) => t.kind === 'kick');
-    if (!kick) return;
-    if (kick.instrumentId === 'kick-sampler') {
-      // Déjà sur le sampler : remplace le buffer de l'instrument en place.
-      const nodes = this.tracks.get(kick.id);
-      if (nodes?.instrument instanceof KickSampler) {
-        nodes.instrument.setBuffer(this.kickBuffer);
+      const store = useAwenStore.getState();
+      store.setKickSampleName(slot, file.name);
+      const kick = store.pattern.tracks.find((t) => t.kind === 'kick');
+      if (!kick) return;
+      if (kick.instrumentId === 'kick-sampler') {
+        // Déjà sur le sampler : remplace le buffer de l'instrument en place.
+        const nodes = this.tracks.get(kick.id);
+        if (nodes?.instrument instanceof KickSampler) {
+          nodes.instrument.setBuffer(slot, buffer);
+        }
+      } else {
+        store.setPattern(setTrackInstrument(store.pattern, kick.id, 'kick-sampler'));
       }
-    } else {
-      store.setPattern(setTrackInstrument(store.pattern, kick.id, 'kick-sampler'));
+    } catch (error) {
+      console.error(`Import du sample « ${file.name} » impossible :`, error);
     }
   }
 
@@ -245,6 +254,7 @@ class AudioEngine {
 
     const anySolo = pattern.tracks.some((t) => t.solo);
     const tonicMidi = degreeToMidi(scale, 0);
+    const stepSec = 60 / Tone.getTransport().bpm.value / 4;
     for (const track of pattern.tracks) {
       if (track.mute || (anySolo && !track.solo)) continue;
       const instrument = this.tracks.get(track.id)?.instrument;
@@ -252,6 +262,7 @@ class AudioEngine {
       if (!instrument || !stepData?.on) continue;
       try {
         let midi: number;
+        let expressive: Partial<ResolvedStep> = {};
         if (track.kind === 'melodic') {
           // Seules les pistes mélodiques exigent un pitch par pas.
           if (stepData.pitch === undefined) continue;
@@ -261,10 +272,18 @@ class AudioEngine {
           const degree = resolveKickPitch(pattern, track, step);
           midi = degree === undefined ? tonicMidi : degreeToMidi(scale, degree);
           if (instrument instanceof KickSampler) instrument.rootMidi = tonicMidi;
+          expressive = {
+            ...(stepData.gate !== undefined ? { durationSec: stepSec * stepData.gate } : {}),
+            ...(stepData.bend !== undefined ? { bendSemitones: stepData.bend } : {}),
+            ...(stepData.variant !== undefined ? { variant: stepData.variant } : {}),
+          };
         } else {
           midi = tonicMidi; // percs : la hauteur est ignorée par les instruments
         }
-        instrument.trigger({ midi, velocity: stepData.vel ?? DEFAULT_VELOCITY }, time);
+        instrument.trigger(
+          { midi, velocity: stepData.vel ?? DEFAULT_VELOCITY, ...expressive },
+          time,
+        );
       } catch (error) {
         // Un pitch invalide (pattern écrit sans passer par les opérations)
         // ne doit pas tuer le tick des autres pistes ni le playhead.

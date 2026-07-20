@@ -8,6 +8,7 @@ interface StepCellProps {
   /** Premier pas d'un temps (colonne accentuée visuellement). */
   beatStart: boolean;
   tall?: boolean;
+  small?: boolean;
   accent?: 'moss' | 'wave';
   onActivate: (shiftKey: boolean) => void;
 }
@@ -23,6 +24,7 @@ export const StepCell = memo(function StepCell({
   vel,
   beatStart,
   tall = false,
+  small = false,
   accent = 'moss',
   onActivate,
 }: StepCellProps) {
@@ -33,7 +35,7 @@ export const StepCell = memo(function StepCell({
       aria-label={ariaLabel}
       aria-pressed={on}
       onClick={(e) => onActivate(e.shiftKey)}
-      className={`${tall ? 'h-8' : 'h-5'} w-full rounded-[3px] border transition-colors ${
+      className={`${tall ? 'h-8' : small ? 'h-4' : 'h-5'} w-full rounded-[3px] border transition-colors ${
         on
           ? onClasses
           : `border-ink/10 hover:border-moss/60 ${beatStart ? 'bg-ink/10' : 'bg-ink/5'}`

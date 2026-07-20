@@ -12,7 +12,22 @@ export interface Step {
   pitch?: number;
   /** Vélocité [0, 1] ; absente = DEFAULT_VELOCITY appliquée au trigger. */
   vel?: number;
+  /**
+   * Kick uniquement : durée relative au pas, dans GATE_LEVELS (1 = longueur
+   * naturelle de l'instrument, 0.5 / 0.25 = kicks courts pour les rolls).
+   */
+  gate?: number;
+  /** Kick uniquement : pitch bend court en demi-tons [-12, 12] (départ décalé, glissé vers la note). */
+  bend?: number;
+  /** Kick uniquement : variante d'instrument du pas (0..2 — preset synthé ou slot sampler). */
+  variant?: number;
 }
+
+/** Durées de kick cyclées par alt+clic (1 = naturelle). */
+export const GATE_LEVELS = [1, 0.5, 0.25] as const;
+
+export const KICK_VARIANTS = 3;
+export const BEND_RANGE = 12;
 
 export interface PitchRange {
   min: number;
@@ -201,6 +216,71 @@ export function resizePattern(pattern: Pattern, newLength: PatternLength): Patte
   };
 }
 
+function kickOnly(track: Track, what: string): void {
+  if (track.kind !== 'kick') {
+    throw new Error(`${what} réservé aux pistes kick (${track.id})`);
+  }
+}
+
+/** Efface le pitch d'un pas (kick : retour à la hauteur native / au suivi). */
+export function clearStepPitch(pattern: Pattern, trackId: string, stepIndex: number): Pattern {
+  return withStep(pattern, trackId, stepIndex, (step, track) => {
+    kickOnly(track, 'clearStepPitch');
+    const { pitch: _drop, ...rest } = step;
+    return rest;
+  });
+}
+
+/** Durée relative d'un pas de kick (GATE_LEVELS ; 1 = retire le champ). */
+export function setStepGate(
+  pattern: Pattern,
+  trackId: string,
+  stepIndex: number,
+  gate: number,
+): Pattern {
+  if (!GATE_LEVELS.includes(gate as (typeof GATE_LEVELS)[number])) {
+    throw new Error(`Gate hors GATE_LEVELS : ${gate}`);
+  }
+  return withStep(pattern, trackId, stepIndex, (step, track) => {
+    kickOnly(track, 'setStepGate');
+    const { gate: _drop, ...rest } = step;
+    return gate === 1 ? rest : { ...rest, gate };
+  });
+}
+
+/** Pitch bend d'un pas de kick, demi-tons entiers clampés (0 = retire le champ). */
+export function setStepBend(
+  pattern: Pattern,
+  trackId: string,
+  stepIndex: number,
+  bend: number,
+): Pattern {
+  if (!Number.isFinite(bend)) throw new Error(`Bend non fini : ${bend}`);
+  const clamped = clamp(Math.round(bend), -BEND_RANGE, BEND_RANGE);
+  return withStep(pattern, trackId, stepIndex, (step, track) => {
+    kickOnly(track, 'setStepBend');
+    const { bend: _drop, ...rest } = step;
+    return clamped === 0 ? rest : { ...rest, bend: clamped };
+  });
+}
+
+/** Variante d'instrument d'un pas de kick (0..KICK_VARIANTS-1 ; 0 = retire le champ). */
+export function setStepVariant(
+  pattern: Pattern,
+  trackId: string,
+  stepIndex: number,
+  variant: number,
+): Pattern {
+  if (!Number.isInteger(variant) || variant < 0 || variant >= KICK_VARIANTS) {
+    throw new Error(`Variante hors [0, ${KICK_VARIANTS - 1}] : ${variant}`);
+  }
+  return withStep(pattern, trackId, stepIndex, (step, track) => {
+    kickOnly(track, 'setStepVariant');
+    const { variant: _drop, ...rest } = step;
+    return variant === 0 ? rest : { ...rest, variant };
+  });
+}
+
 /**
  * Active/désactive le suivi de bassline d'une piste kick (SPECS §1.3).
  * `followTrackId` doit pointer une piste mélodique existante.
@@ -335,6 +415,26 @@ export function validatePattern(pattern: Pattern): string[] {
       }
       if (track.kind === 'melodic' && step.on && step.pitch === undefined) {
         errors.push(`${track.id}[${i}]: pas mélodique actif sans pitch`);
+      }
+      if (step.gate !== undefined) {
+        if (track.kind !== 'kick') errors.push(`${track.id}[${i}]: gate sur une piste ${track.kind}`);
+        if (!GATE_LEVELS.includes(step.gate as (typeof GATE_LEVELS)[number])) {
+          errors.push(`${track.id}[${i}]: gate ${step.gate} hors GATE_LEVELS`);
+        }
+      }
+      if (step.bend !== undefined) {
+        if (track.kind !== 'kick') errors.push(`${track.id}[${i}]: bend sur une piste ${track.kind}`);
+        if (!Number.isInteger(step.bend) || Math.abs(step.bend) > BEND_RANGE) {
+          errors.push(`${track.id}[${i}]: bend ${step.bend} hors [-${BEND_RANGE}, ${BEND_RANGE}]`);
+        }
+      }
+      if (step.variant !== undefined) {
+        if (track.kind !== 'kick') {
+          errors.push(`${track.id}[${i}]: variant sur une piste ${track.kind}`);
+        }
+        if (!Number.isInteger(step.variant) || step.variant < 0 || step.variant >= KICK_VARIANTS) {
+          errors.push(`${track.id}[${i}]: variant ${step.variant} hors [0, ${KICK_VARIANTS - 1}]`);
+        }
       }
     });
   }

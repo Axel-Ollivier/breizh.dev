@@ -38,6 +38,10 @@ type Step = {
   on: boolean;
   pitch?: number;                 // index de degré (voir 1.2) — pistes melodic et kick
   vel?: number;                   // [0, 1], défaut 0.8 ; absent = défaut
+  // Expressivité kick (pistes kick uniquement ; champs absents = neutres) :
+  gate?: number;                  // durée relative au pas ∈ GATE_LEVELS {1, 0.5, 0.25} — rolls
+  bend?: number;                  // glissé court en demi-tons entiers [-12, 12] (départ pitch+bend)
+  variant?: number;               // variante d'instrument du pas ∈ [0, 2] (preset synthé / slot sampler)
 };
 ```
 
@@ -65,8 +69,15 @@ affiche et que le moteur lit pas à pas.
 | Kind      | `pitch`                          | UI                                        |
 |-----------|----------------------------------|-------------------------------------------|
 | `melodic` | requis quand `on`                | piano roll simplifié, lignes = degrés      |
-| `kick`    | optionnel ; ignoré si `followTrackId` | lane on/off + sous-lane de pitch, ou toggle « suivre » |
+| `kick`    | optionnel ; prime sur `followTrackId` | lane on/off expressive + piano-roll de pitch, ou toggle « suivre » |
 | `perc`    | absent (toujours ignoré)         | lane on/off + vélocité                     |
+
+Expressivité kick par pas : `gate` raccourcit le kick (rolls — durée =
+`gate × durée d'un pas`), `bend` part de `pitch + bend` demi-tons et glisse
+vers la note (~100 ms max), `variant` choisit le preset du kick synthé
+(A punch / B tight / C boom) ou le slot du sampler (A/B/C, repli sur A).
+Résolution du pitch d'un pas kick : `pitch` propre > suivi (`followTrackId`,
+dernière note démarrée dans la mesure, sinon tonique) > hauteur native.
 
 Kick avec `followTrackId` : au pas *i*, le moteur cherche le pitch actif au pas *i*
 sur la piste suivie (dernière note démarrée ≤ *i* dans la mesure ; à défaut,

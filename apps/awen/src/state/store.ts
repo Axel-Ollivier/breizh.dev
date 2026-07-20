@@ -3,10 +3,16 @@ import { subscribeWithSelector } from 'zustand/middleware';
 
 import {
   clamp,
+  clearStepPitch,
   createPattern,
   DEFAULT_VELOCITY,
+  GATE_LEVELS,
+  KICK_VARIANTS,
   resizePattern,
+  setStepBend,
+  setStepGate,
   setStepPitch,
+  setStepVariant,
   setStepVelocity,
   setTrackFollow,
   setTrackInstrument,
@@ -31,7 +37,7 @@ export const VELOCITY_LEVELS = [0.4, DEFAULT_VELOCITY, 1] as const;
 const defaultPattern = (): Pattern =>
   createPattern(32, [
     { id: 'melody', kind: 'melodic', instrumentId: 'supersaw', pitchRange: { min: 0, max: 20 } },
-    { id: 'kick', kind: 'kick', instrumentId: 'kick-synth', pitchRange: { min: -7, max: 13 } },
+    { id: 'kick', kind: 'kick', instrumentId: 'kick-synth', pitchRange: { min: -7, max: 7 } },
     { id: 'clap', kind: 'perc', instrumentId: 'clap' },
     { id: 'hats', kind: 'perc', instrumentId: 'hats' },
     { id: 'ride', kind: 'perc', instrumentId: 'ride' },
@@ -59,8 +65,18 @@ interface AwenState {
   cycleStepVelocity: (trackId: string, stepIndex: number) => void;
   /** Toggle simple d'un pas kick/perc (lane de déclenchement). */
   toggleLaneStep: (trackId: string, stepIndex: number) => void;
-  /** Molette sur la pitch lane du kick : ±delta degrés (pose 0 si absent). */
-  adjustKickPitch: (trackId: string, stepIndex: number, delta: number) => void;
+  /**
+   * Clic sur le piano-roll de pitch du kick : pose la hauteur, la déplace,
+   * ou — reclic sur la même — la retire (retour hauteur native) ; sur un pas
+   * éteint, allume le kick avec cette hauteur.
+   */
+  clickKickPitchCell: (trackId: string, stepIndex: number, degree: number) => void;
+  /** Alt+clic : cycle la durée du kick (GATE_LEVELS — rolls). */
+  cycleStepGate: (trackId: string, stepIndex: number) => void;
+  /** Ctrl/Cmd+clic : cycle la variante de kick (A/B/C). */
+  cycleStepVariant: (trackId: string, stepIndex: number) => void;
+  /** Molette sur un pas kick actif : bend ±1 demi-ton. */
+  adjustStepBend: (trackId: string, stepIndex: number, delta: number) => void;
   /** Toggle « suivre la mélodie » d'une piste kick. */
   setKickFollow: (trackId: string, followTrackId: string | undefined) => void;
   setTrackInstrument: (trackId: string, instrumentId: string) => void;
@@ -68,9 +84,9 @@ interface AwenState {
   setTrackMute: (trackId: string, mute: boolean) => void;
   setTrackSolo: (trackId: string, solo: boolean) => void;
   setTrackSend: (trackId: string, sendFx: number) => void;
-  /** Nom du sample de kick importé (le buffer vit dans le moteur audio). */
-  kickSampleName: string | null;
-  setKickSampleName: (name: string | null) => void;
+  /** Noms des samples de kick par slot (les buffers vivent dans le moteur audio). */
+  kickSampleNames: Array<string | null>;
+  setKickSampleName: (slot: number, name: string | null) => void;
 }
 
 export const useAwenStore = create<AwenState>()(
@@ -110,11 +126,39 @@ export const useAwenStore = create<AwenState>()(
     },
     toggleLaneStep: (trackId, stepIndex) =>
       set({ pattern: toggleStep(get().pattern, trackId, stepIndex) }),
-    adjustKickPitch: (trackId, stepIndex, delta) => {
+    clickKickPitchCell: (trackId, stepIndex, degree) => {
+      const { pattern } = get();
+      const step = pattern.tracks.find((t) => t.id === trackId)?.steps[stepIndex];
+      if (!step) return;
+      if (!step.on) {
+        set({ pattern: toggleStep(pattern, trackId, stepIndex, degree) });
+      } else if (step.pitch === degree) {
+        set({ pattern: clearStepPitch(pattern, trackId, stepIndex) });
+      } else {
+        set({ pattern: setStepPitch(pattern, trackId, stepIndex, degree) });
+      }
+    },
+    cycleStepGate: (trackId, stepIndex) => {
       const { pattern } = get();
       const step = pattern.tracks.find((t) => t.id === trackId)?.steps[stepIndex];
       if (!step?.on) return;
-      set({ pattern: setStepPitch(pattern, trackId, stepIndex, (step.pitch ?? 0) + delta) });
+      const index = GATE_LEVELS.indexOf((step.gate ?? 1) as (typeof GATE_LEVELS)[number]);
+      const next = GATE_LEVELS[(index + 1) % GATE_LEVELS.length] ?? 1;
+      set({ pattern: setStepGate(pattern, trackId, stepIndex, next) });
+    },
+    cycleStepVariant: (trackId, stepIndex) => {
+      const { pattern } = get();
+      const step = pattern.tracks.find((t) => t.id === trackId)?.steps[stepIndex];
+      if (!step?.on) return;
+      set({
+        pattern: setStepVariant(pattern, trackId, stepIndex, ((step.variant ?? 0) + 1) % KICK_VARIANTS),
+      });
+    },
+    adjustStepBend: (trackId, stepIndex, delta) => {
+      const { pattern } = get();
+      const step = pattern.tracks.find((t) => t.id === trackId)?.steps[stepIndex];
+      if (!step?.on) return;
+      set({ pattern: setStepBend(pattern, trackId, stepIndex, (step.bend ?? 0) + delta) });
     },
     setKickFollow: (trackId, followTrackId) =>
       set({ pattern: setTrackFollow(get().pattern, trackId, followTrackId) }),
@@ -130,7 +174,10 @@ export const useAwenStore = create<AwenState>()(
       if (!Number.isFinite(sendFx)) return;
       set({ pattern: setTrackSend(get().pattern, trackId, sendFx) });
     },
-    kickSampleName: null,
-    setKickSampleName: (kickSampleName) => set({ kickSampleName }),
+    kickSampleNames: [null, null, null],
+    setKickSampleName: (slot, name) =>
+      set({
+        kickSampleNames: get().kickSampleNames.map((n, i) => (i === slot ? name : n)),
+      }),
   })),
 );

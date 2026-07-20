@@ -1,11 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  clearStepPitch,
   clearTrack,
   createPattern,
   resizePattern,
   resolveKickPitch,
+  setStepBend,
+  setStepGate,
   setStepPitch,
+  setStepVariant,
   setStepVelocity,
   setTrackFollow,
   setTrackSend,
@@ -158,6 +162,63 @@ describe('clearTrack', () => {
     p = clearTrack(p, 'clap');
     expect(p.tracks[2]?.steps.every((s) => !s.on)).toBe(true);
     expect(p.tracks[0]?.steps[0]?.on).toBe(true);
+  });
+});
+
+describe('gate / bend / variant (expressivité kick)', () => {
+  it('pose et retire gate, bend, variant sur un pas kick', () => {
+    let p = toggleStep(make(), 'kick', 0);
+    p = setStepGate(p, 'kick', 0, 0.25);
+    p = setStepBend(p, 'kick', 0, -5);
+    p = setStepVariant(p, 'kick', 0, 2);
+    expect(p.tracks[1]?.steps[0]).toEqual({ on: true, gate: 0.25, bend: -5, variant: 2 });
+    expect(validatePattern(p)).toEqual([]);
+    // valeurs neutres = champs retirés
+    p = setStepGate(p, 'kick', 0, 1);
+    p = setStepBend(p, 'kick', 0, 0);
+    p = setStepVariant(p, 'kick', 0, 0);
+    expect(p.tracks[1]?.steps[0]).toEqual({ on: true });
+  });
+
+  it('clampe et arrondit le bend, rejette les invalides', () => {
+    let p = setStepBend(make(), 'kick', 0, 40);
+    expect(p.tracks[1]?.steps[0]?.bend).toBe(12);
+    p = setStepBend(p, 'kick', 0, -3.4);
+    expect(p.tracks[1]?.steps[0]?.bend).toBe(-3);
+    expect(() => setStepBend(p, 'kick', 0, NaN)).toThrow(/non fini/);
+    expect(() => setStepGate(p, 'kick', 0, 0.7)).toThrow(/GATE_LEVELS/);
+    expect(() => setStepVariant(p, 'kick', 0, 3)).toThrow(/hors/);
+  });
+
+  it('réservés aux pistes kick', () => {
+    expect(() => setStepGate(make(), 'clap', 0, 0.5)).toThrow(/kick/);
+    expect(() => setStepBend(make(), 'melody', 0, 2)).toThrow(/kick/);
+    expect(() => setStepVariant(make(), 'clap', 0, 1)).toThrow(/kick/);
+    expect(() => clearStepPitch(make(), 'melody', 0)).toThrow(/kick/);
+  });
+
+  it('clearStepPitch retire le pitch sans toucher au trigger', () => {
+    let p = toggleStep(make(), 'kick', 0, 5);
+    p = clearStepPitch(p, 'kick', 0);
+    expect(p.tracks[1]?.steps[0]).toEqual({ on: true });
+  });
+
+  it('validatePattern refuse gate/bend/variant hors kick ou hors bornes', () => {
+    const p = make();
+    const broken: Pattern = {
+      ...p,
+      tracks: p.tracks.map((t) =>
+        t.id === 'clap'
+          ? { ...t, steps: t.steps.map((s, i) => (i === 0 ? { on: true, gate: 0.5 } : s)) }
+          : t.id === 'kick'
+            ? { ...t, steps: t.steps.map((s, i) => (i === 0 ? { on: true, bend: 99, variant: 7 } : s)) }
+            : t,
+      ),
+    };
+    const errors = validatePattern(broken);
+    expect(errors.some((e) => e.includes('gate sur une piste perc'))).toBe(true);
+    expect(errors.some((e) => e.includes('bend 99'))).toBe(true);
+    expect(errors.some((e) => e.includes('variant 7'))).toBe(true);
   });
 });
 

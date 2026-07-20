@@ -30,9 +30,11 @@ de review. Un commit par étape cohérente. MVP = fin de phase 4.
 ## Phase 3 — Kicks & percus
 
 - [x] Réconciliation moteur ↔ pattern : (re)créer/`dispose()` les instruments quand les pistes ou `instrumentId` changent (`setPattern` des générateurs/presets — la map est figée à l'init en phase 2)
-- [x] Piste kick : lane de déclenchement + sous-lane de pitch (snap gamme) + toggle « suivre la mélodie » (`followTrackId`)
+- [x] Piste kick : lane de déclenchement + piano-roll de pitch (snap gamme) + toggle « suivre la mélodie » (`followTrackId`)
+- [x] Expressivité kick par pas : durée/gate (rolls), pitch bend (demi-tons), variante A/B/C (presets synthé / slots sampler)
 - [x] Kick sampler : import drag & drop / fichier, repitch par `playbackRate` (natif = tonique)
-- [ ] Kick sampler — stretch : plusieurs slots, persistance IndexedDB
+- [x] Kick sampler : 3 slots A/B/C (variante par pas)
+- [ ] Kick sampler — stretch : persistance IndexedDB
 - [x] Kick synthétisé basique : osc + enveloppe de pitch rapide → `WaveShaper` hard clip + `Chebyshev` → EQ ; params punch / pitch de tail / drive / longueur
 - [x] Pistes perc : clap (2 & 4), hats, ride offbeat — `NoiseSynth` filtré / ride synthétique
 - [x] Mixage par piste : volume, mute/solo, send FX ; sends delay synchronisé + reverb
