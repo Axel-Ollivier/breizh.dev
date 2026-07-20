@@ -39,7 +39,7 @@ de review. Un commit par étape cohérente. MVP = fin de phase 4.
 - [x] Pistes perc : clap (2 & 4), hats, ride offbeat — `NoiseSynth` filtré / ride synthétique
 - [x] Mixage par piste : volume, mute/solo, send FX ; sends delay synchronisé + reverb
 - [x] Gain staging par piste + `EQ3` + `Limiter` sur le master (obligatoire dès cette phase)
-- [ ] Commit + review
+- [x] Commit + review
 
 ## Phase 4 — Générateurs *(= MVP)*
 
@@ -63,13 +63,14 @@ de review. Un commit par étape cohérente. MVP = fin de phase 4.
 
 ## Phase 6 — Export & kits
 
-- [ ] Export MVP : `Tone.Recorder` master (webm/opus)
-- [ ] Export cible : `Tone.Offline` → WAV déterministe, boucles 4/8/16 mesures calées sur la barre, nom de fichier auto (SPECS §5)
-- [ ] Presets JSON : localStorage + export/import fichier, champ `version`
-- [ ] Raccourci `E` export
-- [ ] Kit « Kosmische / Berlin School » : tempo/gammes/rack dédiés, automate cellulaire comme générateur (si l'envie est là)
-- [ ] Déploiement : Dockerfile nginx, service Traefik `awen.breizh.dev` dans `docker-compose.prod.yml`, entrée dans la matrice de `.github/workflows/deploy.yml`, DNS
-- [ ] Commit + review
+- [x] ~~Export `Tone.Recorder`~~ : sauté, le WAV offline couvre le besoin directement
+- [x] Export `Tone.Offline` → WAV 16 bits, boucles 4/8/16 mesures calées sur la barre, nom de fichier auto (SPECS §5), résolution des pas partagée avec le temps réel
+- [x] Presets JSON : autosave localStorage (rechargé au boot) + export/import fichier, champ `version`, pattern validé à l'import
+- [x] Raccourci `E` export
+- [x] Automate cellulaire (règle 90) comme générateur de séquences (esprit Kosmische)
+- [ ] Kit « Kosmische » complet (tempo/gammes/rack dédiés) : non retenu pour l'instant
+- [x] Déploiement : Dockerfile nginx, service Traefik `awen.breizh.dev`, entrée dans la matrice de deploy.yml — reste le DNS `awen.breizh.dev` (action manuelle)
+- [x] Commit + review
 
 ## Definition of done (MVP = fin de phase 4)
 

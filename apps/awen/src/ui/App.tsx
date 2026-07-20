@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 
 import { audioEngine } from '../audio/AudioEngine';
 import { useAwenStore } from '../state/store';
+import { runWavExport } from './exportUtils';
 import { GeneratorBar } from './GeneratorBar';
 import { KickSection } from './KickSection';
 import { MelodicGrid } from './MelodicGrid';
@@ -25,6 +26,8 @@ export function App() {
         useAwenStore.getState().mutateAction();
       } else if (e.code === 'KeyR') {
         useAwenStore.getState().newSeed();
+      } else if (e.code === 'KeyE') {
+        void runWavExport();
       }
     };
     window.addEventListener('keydown', onKeyDown);
@@ -46,7 +49,8 @@ export function App() {
           <kbd className="rounded border border-ink/20 px-1.5 py-0.5">espace</kbd> play ·{' '}
           <kbd className="rounded border border-ink/20 px-1.5 py-0.5">G</kbd> générer ·{' '}
           <kbd className="rounded border border-ink/20 px-1.5 py-0.5">M</kbd> mutate ·{' '}
-          <kbd className="rounded border border-ink/20 px-1.5 py-0.5">R</kbd> seed
+          <kbd className="rounded border border-ink/20 px-1.5 py-0.5">R</kbd> seed ·{' '}
+          <kbd className="rounded border border-ink/20 px-1.5 py-0.5">E</kbd> export
         </p>
       </header>
 

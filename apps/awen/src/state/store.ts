@@ -27,6 +27,7 @@ import {
   type Pattern,
   type PatternLength,
 } from '../engine/pattern';
+import { generateAutomaton } from '../engine/automaton';
 import { deriveKickPitches } from '../engine/bassline';
 import { euclidToTrack } from '../engine/euclid';
 import { generateMelody, type MelodyCharacter, type WriteMode } from '../engine/markov';
@@ -121,6 +122,11 @@ interface AwenState {
   euclidPercsAction: () => void;
   /** Perturbation contrôlée (M). */
   mutateAction: () => void;
+  /** Automate cellulaire (règle 90) -> piste mélodique (esprit Kosmische). */
+  automatonAction: () => void;
+  /** Longueur d'export WAV en mesures. */
+  exportBars: 4 | 8 | 16;
+  setExportBars: (bars: 4 | 8 | 16) => void;
 }
 
 export const useAwenStore = create<AwenState>()(
@@ -263,5 +269,14 @@ export const useAwenStore = create<AwenState>()(
         actionCounter: actionCounter + 1,
       });
     },
+    automatonAction: () => {
+      const { pattern, seed, actionCounter } = get();
+      set({
+        pattern: generateAutomaton(pattern, 'melody', { rule: 90 }, streamRng(seed, actionCounter)),
+        actionCounter: actionCounter + 1,
+      });
+    },
+    exportBars: 8,
+    setExportBars: (exportBars) => set({ exportBars }),
   })),
 );

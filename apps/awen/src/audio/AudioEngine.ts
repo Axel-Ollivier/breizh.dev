@@ -1,13 +1,10 @@
 import * as Tone from 'tone';
 
-import {
-  DEFAULT_VELOCITY,
-  resolveKickPitch,
-  setTrackInstrument,
-  type Pattern,
-} from '../engine/pattern';
+import { setTrackInstrument, type Pattern } from '../engine/pattern';
 import { degreeToMidi } from '../engine/scales';
 import { useAwenStore } from '../state/store';
+import { exportFileName, renderPatternWav } from './renderOffline';
+import { stepTriggers } from './stepTriggers';
 import { Clap } from './instruments/Clap';
 import { Hats } from './instruments/Hats';
 import { KICK_SLOTS, KickSampler } from './instruments/KickSampler';
@@ -17,7 +14,7 @@ import { Ride } from './instruments/Ride';
 import { Screech } from './instruments/Screech';
 import { SquareLead } from './instruments/SquareLead';
 import { SupersawLead } from './instruments/SupersawLead';
-import type { Instrument, ResolvedStep } from './instruments/types';
+import type { Instrument } from './instruments/types';
 
 interface TrackNodes {
   instrumentId: string;
@@ -253,6 +250,26 @@ class AudioEngine {
   }
 
   /**
+   * Export WAV offline (SPECS §5) : stoppe la lecture puis rend N mesures
+   * calées sur la barre, avec les mêmes buffers de kick que le temps réel.
+   */
+  async exportWav(bars: 4 | 8 | 16): Promise<{ blob: Blob; filename: string }> {
+    await this.ensureInitialized();
+    if (useAwenStore.getState().isPlaying) this.stop();
+    const { pattern, bpm, scale, ducking, seed } = useAwenStore.getState();
+    const blob = await renderPatternWav({
+      pattern,
+      bpm,
+      scale,
+      ducking,
+      bars,
+      kickBuffers: this.kickBuffers,
+      seed,
+    });
+    return { blob, filename: exportFileName({ seed, scale, bpm, bars }) };
+  }
+
+  /**
    * Playhead : l'UI s'abonne ici ; les callbacks sont invoqués via `Tone.Draw`
    * au moment audio du pas (`-1` = lecture arrêtée). Retourne le désabonnement.
    */
@@ -276,66 +293,30 @@ class AudioEngine {
       Math.floor(Math.round(transport.getTicksAtTime(time)) / ticksPerStep) %
       pattern.lengthSteps;
 
-    const anySolo = pattern.tracks.some((t) => t.solo);
-    const tonicMidi = degreeToMidi(scale, 0);
     const stepSec = 60 / Tone.getTransport().bpm.value / 4;
-    for (const track of pattern.tracks) {
-      if (track.mute || (anySolo && !track.solo)) continue;
-      const instrument = this.tracks.get(track.id)?.instrument;
-      const stepData = track.steps[step];
-      if (!instrument || !stepData?.on) continue;
+    const { triggers, kickHit, tonicMidi } = stepTriggers(pattern, scale, step, stepSec);
+    for (const { trackId, resolved } of triggers) {
+      const instrument = this.tracks.get(trackId)?.instrument;
+      if (!instrument) continue;
       try {
-        let midi: number;
-        let expressive: Partial<ResolvedStep> = {};
-        if (track.kind === 'melodic') {
-          // Seules les pistes mélodiques exigent un pitch par pas.
-          if (stepData.pitch === undefined) continue;
-          midi = degreeToMidi(scale, stepData.pitch);
-          if (stepData.len !== undefined) {
-            expressive = { durationSec: stepData.len * stepSec * 0.95 };
-          }
-        } else if (track.kind === 'kick') {
-          // Pitch lane > suivi bassline > hauteur native (tonique).
-          const degree = resolveKickPitch(pattern, track, step);
-          midi = degree === undefined ? tonicMidi : degreeToMidi(scale, degree);
-          if (instrument instanceof KickSampler) instrument.rootMidi = tonicMidi;
-          expressive = {
-            ...(stepData.gate !== undefined ? { durationSec: stepSec * stepData.gate } : {}),
-            ...(stepData.bend !== undefined ? { bendSemitones: stepData.bend } : {}),
-            ...(stepData.variant !== undefined ? { variant: stepData.variant } : {}),
-          };
-        } else {
-          midi = tonicMidi; // percs : la hauteur est ignorée par les instruments
-        }
-        instrument.trigger(
-          { midi, velocity: stepData.vel ?? DEFAULT_VELOCITY, ...expressive },
-          time,
-        );
+        if (instrument instanceof KickSampler) instrument.rootMidi = tonicMidi;
+        instrument.trigger(resolved, time);
       } catch (error) {
         // Un pitch invalide (pattern écrit sans passer par les opérations)
         // ne doit pas tuer le tick des autres pistes ni le playhead.
-        console.error(`Trigger impossible (piste ${track.id}, pas ${step}) :`, error);
+        console.error(`Trigger impossible (piste ${trackId}, pas ${step}) :`, error);
       }
     }
 
     // Ducking : les pistes mélodiques plongent brièvement quand un kick
     // audible tombe sur ce pas (enveloppe de gain simple).
-    if (useAwenStore.getState().ducking) {
-      const kickHits = pattern.tracks.some(
-        (t) =>
-          t.kind === 'kick' &&
-          !t.mute &&
-          !(anySolo && !t.solo) &&
-          t.steps[step]?.on === true,
-      );
-      if (kickHits) {
-        for (const t of pattern.tracks) {
-          const duck = this.tracks.get(t.id)?.duck;
-          if (!duck) continue;
-          duck.gain.cancelScheduledValues(time);
-          duck.gain.setValueAtTime(0.2, time);
-          duck.gain.linearRampToValueAtTime(1, time + Math.min(0.16, stepSec * 1.6));
-        }
+    if (kickHit && useAwenStore.getState().ducking) {
+      for (const nodes of this.tracks.values()) {
+        const duck = nodes.duck;
+        if (!duck) continue;
+        duck.gain.cancelScheduledValues(time);
+        duck.gain.setValueAtTime(0.2, time);
+        duck.gain.linearRampToValueAtTime(1, time + Math.min(0.16, stepSec * 1.6));
       }
     }
 

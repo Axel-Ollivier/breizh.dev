@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
 import type { MelodyCharacter } from '../engine/markov';
 import { useAwenStore } from '../state/store';
+import { exportPresetFile, importPresetFile, runWavExport } from './exportUtils';
 
 const CHARACTERS: Array<{ value: MelodyCharacter; label: string }> = [
   { value: 'euphorique', label: 'euphorique' },
@@ -16,8 +17,11 @@ const buttonClass =
 export function GeneratorBar() {
   const seed = useAwenStore((s) => s.seed);
   const character = useAwenStore((s) => s.character);
+  const exportBars = useAwenStore((s) => s.exportBars);
   // Brouillon local pour la même raison que le BPM : commit au blur/Entrée.
   const [seedDraft, setSeedDraft] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const presetInput = useRef<HTMLInputElement>(null);
 
   // `force` (Entrée) : re-commiter un seed identique remet quand même le
   // compteur d'actions à zéro — « repartir de ce seed ».
@@ -113,6 +117,71 @@ export function GeneratorBar() {
       >
         Mutate
       </button>
+      <button
+        type="button"
+        title="Automate cellulaire (règle 90) → mélodie, esprit Kosmische"
+        onClick={() => useAwenStore.getState().automatonAction()}
+        className={buttonClass}
+      >
+        Automate
+      </button>
+
+      <span className="mx-1 h-6 w-px bg-ink/10" aria-hidden />
+
+      <label className="flex items-center gap-1.5">
+        <span className="text-[10px] uppercase tracking-widest text-ink/50">Export</span>
+        <select
+          aria-label="Longueur d'export"
+          value={exportBars}
+          onChange={(e) => useAwenStore.getState().setExportBars(Number(e.target.value) as 4 | 8 | 16)}
+          className="rounded-md border border-ink/20 bg-surface px-1.5 py-1 font-mono text-xs text-ink focus:border-moss focus:outline-none"
+        >
+          {[4, 8, 16].map((bars) => (
+            <option key={bars} value={bars}>
+              {bars} mesures
+            </option>
+          ))}
+        </select>
+      </label>
+      <button
+        type="button"
+        title="Rendu WAV offline calé sur la barre (E)"
+        disabled={exporting}
+        onClick={() => {
+          setExporting(true);
+          void runWavExport().finally(() => setExporting(false));
+        }}
+        className={`${buttonClass} border-moss/50 text-moss disabled:opacity-40`}
+      >
+        {exporting ? 'rendu…' : 'WAV'}
+      </button>
+      <button
+        type="button"
+        title="Exporter le preset (pattern + params) en JSON"
+        onClick={exportPresetFile}
+        className={buttonClass}
+      >
+        Preset ↓
+      </button>
+      <button
+        type="button"
+        title="Importer un preset JSON"
+        onClick={() => presetInput.current?.click()}
+        className={buttonClass}
+      >
+        Preset ↑
+      </button>
+      <input
+        ref={presetInput}
+        type="file"
+        accept="application/json"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) void importPresetFile(file);
+          e.target.value = '';
+        }}
+      />
     </div>
   );
 }

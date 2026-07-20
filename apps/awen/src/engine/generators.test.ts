@@ -207,6 +207,28 @@ describe('mutatePattern', () => {
   });
 });
 
+describe('generateAutomaton', () => {
+  it('est déterministe, borné à la plage et jamais muet', async () => {
+    const { generateAutomaton } = await import('./automaton');
+    const a = generateAutomaton(make(), 'melody', { rule: 90 }, streamRng(4242, 0));
+    const b = generateAutomaton(make(), 'melody', { rule: 90 }, streamRng(4242, 0));
+    expect(a).toEqual(b);
+    expect(validatePattern(a)).toEqual([]);
+    const notes = a.tracks[0]!.steps.filter((s) => s.on);
+    expect(notes.length).toBeGreaterThan(0);
+    for (const s of notes) {
+      expect(s.pitch).toBeGreaterThanOrEqual(0);
+      expect(s.pitch).toBeLessThanOrEqual(20);
+    }
+    expect(() => generateAutomaton(make(), 'melody', { rule: 300 }, streamRng(1, 0))).toThrow(
+      /hors/,
+    );
+    expect(() => generateAutomaton(make(), 'clap', { rule: 90 }, streamRng(1, 0))).toThrow(
+      /mélodique/,
+    );
+  });
+});
+
 describe('reproductibilité (invariant maître, SPECS §3.1)', () => {
   it('même seed + même séquence d’actions = même pattern', () => {
     const run = (): Pattern => {

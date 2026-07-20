@@ -184,9 +184,14 @@ phase 6.
 
 ## 5. Export
 
-- MVP : `Tone.Recorder` sur le master (webm/opus).
-- Cible : `Tone.Offline` → WAV déterministe, boucles de 4/8/16 mesures, départ et
-  arrêt sur la barre. Nom auto : `awen_hardstyle_seed4242_fmin_150bpm_8bars.wav`
+- `Tone.Offline` → WAV PCM 16 bits, boucles de 4/8/16 mesures, départ et arrêt
+  sur la barre (+ ~1,2 s de queue d'effets). Nom auto :
+  `awen_hardstyle_seed4242_fmin_150bpm_8bars.wav`
   (`awen_<kit>_seed<seed>_<tonique><mode>_<bpm>bpm_<n>bars.wav`).
+  La résolution des pas est partagée avec le temps réel (`audio/stepTriggers`).
+  Nuance assumée : l'impulse de `Tone.Reverb` est générée par bruit à chaque
+  rendu — le signal dry est déterministe, la queue de reverb peut varier
+  marginalement entre deux exports. (`Tone.Recorder` abandonné : le WAV
+  offline couvre le besoin directement.)
 - Presets : `{ pattern, instruments, params, seed, bpm, scale }` en JSON —
   localStorage + export/import fichier. Champ `version` pour les migrations.
