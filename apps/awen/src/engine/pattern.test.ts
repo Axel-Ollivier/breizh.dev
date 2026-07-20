@@ -4,8 +4,12 @@ import {
   clearTrack,
   createPattern,
   resizePattern,
+  resolveKickPitch,
   setStepPitch,
   setStepVelocity,
+  setTrackFollow,
+  setTrackSend,
+  setTrackVolume,
   toggleStep,
   validatePattern,
   type Pattern,
@@ -154,6 +158,71 @@ describe('clearTrack', () => {
     p = clearTrack(p, 'clap');
     expect(p.tracks[2]?.steps.every((s) => !s.on)).toBe(true);
     expect(p.tracks[0]?.steps[0]?.on).toBe(true);
+  });
+});
+
+describe('setTrackFollow / mixage', () => {
+  it('pose et retire le suivi kick -> mélodie', () => {
+    let p = setTrackFollow(make(), 'kick', 'melody');
+    expect(p.tracks[1]?.followTrackId).toBe('melody');
+    expect(validatePattern(p)).toEqual([]);
+    p = setTrackFollow(p, 'kick', undefined);
+    expect(p.tracks[1]?.followTrackId).toBeUndefined();
+  });
+
+  it('rejette une cible non mélodique, inconnue, ou une piste non kick', () => {
+    expect(() => setTrackFollow(make(), 'kick', 'clap')).toThrow(/mélodique/);
+    expect(() => setTrackFollow(make(), 'kick', 'nope')).toThrow(/inconnue/);
+    expect(() => setTrackFollow(make(), 'clap', 'melody')).toThrow(/kick/);
+  });
+
+  it('clampe volume et send, rejette les non-finis', () => {
+    let p = setTrackVolume(make(), 'clap', -120);
+    expect(p.tracks[2]?.volume).toBe(-60);
+    p = setTrackSend(p, 'clap', 1.8);
+    expect(p.tracks[2]?.sendFx).toBe(1);
+    expect(() => setTrackVolume(p, 'clap', NaN)).toThrow(/non fini/);
+    expect(() => setTrackSend(p, 'clap', NaN)).toThrow(/non fini/);
+  });
+});
+
+describe('resolveKickPitch', () => {
+  const withMelody = (): Pattern => {
+    let p = setTrackFollow(make(), 'kick', 'melody');
+    p = toggleStep(p, 'melody', 0, 7); // tonique octave
+    p = toggleStep(p, 'melody', 4, 10);
+    p = toggleStep(p, 'kick', 0);
+    p = toggleStep(p, 'kick', 2);
+    p = toggleStep(p, 'kick', 6);
+    return p;
+  };
+
+  it('reprend la dernière note démarrée dans la mesure', () => {
+    const p = withMelody();
+    const kick = p.tracks[1]!;
+    expect(resolveKickPitch(p, kick, 0)).toBe(7);
+    expect(resolveKickPitch(p, kick, 2)).toBe(7);
+    expect(resolveKickPitch(p, kick, 6)).toBe(10);
+  });
+
+  it('retombe sur la tonique sans note en amont dans la mesure', () => {
+    let p = setTrackFollow(resizePattern(make(), 32), 'kick', 'melody');
+    p = toggleStep(p, 'melody', 20, 12); // note dans la 2e mesure seulement
+    const kick = p.tracks[1]!;
+    expect(resolveKickPitch(p, kick, 2)).toBe(0);
+    expect(resolveKickPitch(p, kick, 18)).toBe(0); // avant la note de sa mesure
+    expect(resolveKickPitch(p, kick, 22)).toBe(12);
+  });
+
+  it('le pitch propre du pas prime sur le suivi', () => {
+    let p = withMelody();
+    p = setStepPitch(p, 'kick', 2, -3);
+    expect(resolveKickPitch(p, p.tracks[1]!, 2)).toBe(-3);
+  });
+
+  it('sans pitch ni suivi : undefined (hauteur native)', () => {
+    const p = toggleStep(make(), 'kick', 0);
+    expect(resolveKickPitch(p, p.tracks[1]!, 0)).toBeUndefined();
   });
 });
 

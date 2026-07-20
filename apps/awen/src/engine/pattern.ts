@@ -201,6 +201,88 @@ export function resizePattern(pattern: Pattern, newLength: PatternLength): Patte
   };
 }
 
+/**
+ * Active/désactive le suivi de bassline d'une piste kick (SPECS §1.3).
+ * `followTrackId` doit pointer une piste mélodique existante.
+ */
+export function setTrackFollow(
+  pattern: Pattern,
+  trackId: string,
+  followTrackId: string | undefined,
+): Pattern {
+  if (followTrackId !== undefined) {
+    const target = pattern.tracks.find((t) => t.id === followTrackId);
+    if (!target) throw new Error(`Piste suivie inconnue : ${followTrackId}`);
+    if (target.kind !== 'melodic') {
+      throw new Error(`followTrackId doit pointer une piste mélodique (${followTrackId})`);
+    }
+  }
+  return withTrack(pattern, trackId, (track) => {
+    if (track.kind !== 'kick') {
+      throw new Error(`followTrackId réservé aux pistes kick (${track.id})`);
+    }
+    const { followTrackId: _drop, ...rest } = track;
+    return followTrackId === undefined ? rest : { ...rest, followTrackId };
+  });
+}
+
+/** Change l'instrument d'une piste (rack). */
+export function setTrackInstrument(
+  pattern: Pattern,
+  trackId: string,
+  instrumentId: string,
+): Pattern {
+  return withTrack(pattern, trackId, (track) => ({ ...track, instrumentId }));
+}
+
+export function setTrackVolume(pattern: Pattern, trackId: string, volume: number): Pattern {
+  if (!Number.isFinite(volume)) throw new Error(`Volume non fini : ${volume}`);
+  return withTrack(pattern, trackId, (track) => ({
+    ...track,
+    volume: clamp(volume, -60, 6),
+  }));
+}
+
+export function setTrackMute(pattern: Pattern, trackId: string, mute: boolean): Pattern {
+  return withTrack(pattern, trackId, (track) => ({ ...track, mute }));
+}
+
+export function setTrackSolo(pattern: Pattern, trackId: string, solo: boolean): Pattern {
+  return withTrack(pattern, trackId, (track) => ({ ...track, solo }));
+}
+
+export function setTrackSend(pattern: Pattern, trackId: string, sendFx: number): Pattern {
+  if (!Number.isFinite(sendFx)) throw new Error(`Send non fini : ${sendFx}`);
+  return withTrack(pattern, trackId, (track) => ({
+    ...track,
+    sendFx: clamp(sendFx, 0, 1),
+  }));
+}
+
+/**
+ * Pitch effectif d'un pas de kick (SPECS §1.3) : pitch propre, sinon — si la
+ * piste suit une piste mélodique — dernière note démarrée ≤ pas dans la mesure,
+ * sinon tonique (degré 0). Retourne undefined pour « hauteur native » (kick
+ * sans pitch ni suivi).
+ */
+export function resolveKickPitch(
+  pattern: Pattern,
+  kickTrack: Track,
+  stepIndex: number,
+): number | undefined {
+  const step = kickTrack.steps[stepIndex];
+  if (step?.pitch !== undefined) return step.pitch;
+  if (kickTrack.followTrackId === undefined) return undefined;
+  const followed = pattern.tracks.find((t) => t.id === kickTrack.followTrackId);
+  if (!followed) return 0;
+  const measureStart = stepIndex - (stepIndex % 16);
+  for (let i = stepIndex; i >= measureStart; i--) {
+    const s = followed.steps[i];
+    if (s?.on && s.pitch !== undefined) return s.pitch;
+  }
+  return 0;
+}
+
 export function clearTrack(pattern: Pattern, trackId: string): Pattern {
   return withTrack(pattern, trackId, (track) => ({
     ...track,
