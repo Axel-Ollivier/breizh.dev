@@ -93,6 +93,10 @@ Toutes **pures** : `(pattern, args) => Pattern` (nouvel objet, jamais de mutatio
 - `setStepVelocity`, `setStepPitch` — clamp/valide selon le kind (cf. 1.3).
 - `resizePattern(pattern, newLength)` — extension : nouveaux pas off ; réduction :
   troncature (les données coupées sont perdues, l'UI confirme si non vide).
+- `addTrack(pattern, def)` / `removeTrack(pattern, trackId)` — nombre de pistes
+  libre. `melody` et `kick` sont les pistes primaires (référencées par les
+  générateurs et le suivi de bassline) : l'UI les protège de la suppression.
+  Retirer une piste suivie nettoie les `followTrackId` qui pointaient dessus.
 - `clearTrack(pattern, trackId)`
 - Toute opération préserve les invariants de la section 2.
 

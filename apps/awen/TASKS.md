@@ -72,6 +72,13 @@ de review. Un commit par étape cohérente. MVP = fin de phase 4.
 - [x] Déploiement : Dockerfile nginx, service Traefik `awen.breizh.dev`, entrée dans la matrice de deploy.yml — reste le DNS `awen.breizh.dev` (action manuelle)
 - [x] Commit + review
 
+## Post-brief (retours utilisateur)
+
+- [x] Expressivité kick par pas (gate/bend/variantes, piano-roll) — feedback #1
+- [x] Pistes dynamiques : ajouter/supprimer leads, kicks, percus (melody/kick primaires protégées)
+- [x] BPM débridé 60–220 (le kit ne verrouille pas le tempo)
+- [ ] Kits nommés switchables (Hardstyle / Kosmische) : à faire si souhaité
+
 ## Definition of done (MVP = fin de phase 4)
 
 - Mélodie euphorique de 4 mesures à 150 BPM, kicks pitchés qui suivent la bassline,

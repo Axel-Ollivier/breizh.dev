@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  addTrack,
+  removeTrack,
   clearStepPitch,
   clearTrack,
   copyMeasure,
@@ -334,6 +336,37 @@ describe('len / drive / copyMeasure (phase 5)', () => {
     expect(validatePattern(p)).toEqual([]);
     expect(() => copyMeasure(p, 0, 2)).toThrow(/hors pattern/);
     expect(copyMeasure(p, 1, 1)).toBe(p);
+  });
+});
+
+describe('addTrack / removeTrack', () => {
+  it('ajoute une piste vide à la bonne longueur, id unique exigé', () => {
+    const p = addTrack(resizePattern(make(), 32), {
+      id: 'perc-2',
+      kind: 'perc',
+      instrumentId: 'hats',
+    });
+    expect(p.tracks).toHaveLength(4);
+    expect(p.tracks[3]?.steps).toHaveLength(32);
+    expect(validatePattern(p)).toEqual([]);
+    expect(() => addTrack(p, { id: 'kick', kind: 'perc', instrumentId: 'clap' })).toThrow(
+      /déjà pris/,
+    );
+  });
+
+  it('retire une piste et nettoie les suivis qui pointaient dessus', () => {
+    let p = addTrack(make(), {
+      id: 'lead-2',
+      kind: 'melodic',
+      instrumentId: 'pluck',
+      pitchRange: { min: 0, max: 20 },
+    });
+    p = setTrackFollow(p, 'kick', 'lead-2');
+    p = removeTrack(p, 'lead-2');
+    expect(p.tracks.some((t) => t.id === 'lead-2')).toBe(false);
+    expect(p.tracks[1]?.followTrackId).toBeUndefined();
+    expect(validatePattern(p)).toEqual([]);
+    expect(() => removeTrack(p, 'nope')).toThrow(/inconnue/);
   });
 });
 

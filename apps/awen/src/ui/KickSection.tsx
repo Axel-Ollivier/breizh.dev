@@ -8,10 +8,10 @@ import { Playhead } from './Playhead';
 import { StepCell } from './StepCell';
 import { TrackControls } from './TrackControls';
 
-const TRACK_ID = 'kick';
 const SLOT_LABELS = ['A', 'B', 'C'] as const;
 
 interface KickCellProps {
+  trackId: string;
   stepIndex: number;
   on: boolean;
   vel: number;
@@ -27,6 +27,7 @@ interface KickCellProps {
  * Rendu : remplissage = gate, opacité = vélocité, badges variante et bend.
  */
 const KickCell = memo(function KickCell({
+  trackId,
   stepIndex,
   on,
   vel,
@@ -38,17 +39,17 @@ const KickCell = memo(function KickCell({
   return (
     <button
       type="button"
-      aria-label={`Pas kick ${stepIndex + 1}`}
+      aria-label={`Pas ${trackId} ${stepIndex + 1}`}
       aria-pressed={on}
       onClick={(e) => {
         const s = useAwenStore.getState();
-        if (e.altKey) s.cycleStepGate(TRACK_ID, stepIndex);
-        else if (e.ctrlKey || e.metaKey) s.cycleStepVariant(TRACK_ID, stepIndex);
-        else if (e.shiftKey) s.cycleStepVelocity(TRACK_ID, stepIndex);
-        else s.toggleLaneStep(TRACK_ID, stepIndex);
+        if (e.altKey) s.cycleStepGate(trackId, stepIndex);
+        else if (e.ctrlKey || e.metaKey) s.cycleStepVariant(trackId, stepIndex);
+        else if (e.shiftKey) s.cycleStepVelocity(trackId, stepIndex);
+        else s.toggleLaneStep(trackId, stepIndex);
       }}
       onWheel={(e) => {
-        if (on) useAwenStore.getState().adjustStepBend(TRACK_ID, stepIndex, e.deltaY < 0 ? 1 : -1);
+        if (on) useAwenStore.getState().adjustStepBend(trackId, stepIndex, e.deltaY < 0 ? 1 : -1);
       }}
       className={`relative h-8 w-full overflow-hidden rounded-[3px] border transition-colors ${
         on ? 'border-wave' : `border-ink/10 hover:border-wave/60 ${beatStart ? 'bg-ink/10' : 'bg-ink/5'}`
@@ -75,7 +76,8 @@ const KickCell = memo(function KickCell({
   );
 });
 
-export function KickSection() {
+export function KickSection({ trackId = 'kick' }: { trackId?: string }) {
+  const TRACK_ID = trackId;
   const track = useAwenStore((s) => s.pattern.tracks.find((t) => t.id === TRACK_ID));
   const lengthSteps = useAwenStore((s) => s.pattern.lengthSteps);
   const scale = useAwenStore((s) => s.scale);
@@ -108,8 +110,18 @@ export function KickSection() {
     >
       <div className="flex flex-wrap items-center gap-3">
         <h2 className="font-display text-sm font-black italic uppercase tracking-wider text-wave">
-          Kick
+          {TRACK_ID === 'kick' ? 'Kick' : TRACK_ID}
         </h2>
+        {TRACK_ID !== 'kick' && (
+          <button
+            type="button"
+            title="Supprimer cette piste"
+            onClick={() => useAwenStore.getState().removeTrackAction(TRACK_ID)}
+            className="rounded border border-ink/20 px-1.5 text-xs text-ink/50 hover:border-red-400 hover:text-red-300"
+          >
+            ✕
+          </button>
+        )}
         <select
           aria-label="Instrument du kick"
           value={track.instrumentId}
@@ -179,6 +191,7 @@ export function KickSection() {
             {track.steps.map((step, i) => (
               <KickCell
                 key={i}
+                trackId={TRACK_ID}
                 stepIndex={i}
                 on={step.on}
                 vel={step.on ? (step.vel ?? DEFAULT_VELOCITY) : 0}

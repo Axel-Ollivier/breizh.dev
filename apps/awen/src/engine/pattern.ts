@@ -432,6 +432,33 @@ export function resolveKickPitch(
   return 0;
 }
 
+/** Ajoute une piste vide à la longueur du pattern (id unique exigé). */
+export function addTrack(pattern: Pattern, def: TrackDef): Pattern {
+  if (pattern.tracks.some((t) => t.id === def.id)) {
+    throw new Error(`Id de piste déjà pris : ${def.id}`);
+  }
+  const [track] = createPattern(pattern.lengthSteps, [def]).tracks;
+  return { ...pattern, tracks: [...pattern.tracks, track!] };
+}
+
+/**
+ * Retire une piste ; les kicks qui la suivaient perdent leur `followTrackId`
+ * (retour pitch lane) pour préserver l'invariant 5.
+ */
+export function removeTrack(pattern: Pattern, trackId: string): Pattern {
+  getTrack(pattern, trackId);
+  return {
+    ...pattern,
+    tracks: pattern.tracks
+      .filter((t) => t.id !== trackId)
+      .map((t) => {
+        if (t.followTrackId !== trackId) return t;
+        const { followTrackId: _drop, ...rest } = t;
+        return rest;
+      }),
+  };
+}
+
 export function clearTrack(pattern: Pattern, trackId: string): Pattern {
   return withTrack(pattern, trackId, (track) => ({
     ...track,

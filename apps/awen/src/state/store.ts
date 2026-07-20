@@ -2,10 +2,12 @@ import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 
 import {
+  addTrack,
   clamp,
   clearStepPitch,
   copyMeasure,
   createPattern,
+  removeTrack,
   DEFAULT_VELOCITY,
   GATE_LEVELS,
   KICK_VARIANTS,
@@ -26,6 +28,7 @@ import {
   toggleStep,
   type Pattern,
   type PatternLength,
+  type TrackKind,
 } from '../engine/pattern';
 import { generateAutomaton } from '../engine/automaton';
 import { deriveKickPitches } from '../engine/bassline';
@@ -35,8 +38,10 @@ import { mutatePattern } from '../engine/mutate';
 import { hashSeed, streamRng } from '../engine/prng';
 import { DEFAULT_SCALE, type Scale } from '../engine/scales';
 
-export const BPM_MIN = 140;
-export const BPM_MAX = 200;
+// Plage large : le hardstyle vit entre 140 et 200, mais le BPM n'est pas
+// verrouillé par le kit (séquences lentes type Berlin School bienvenues).
+export const BPM_MIN = 60;
+export const BPM_MAX = 220;
 export const DEFAULT_BPM = 150;
 
 /** Niveaux de vélocité cyclés par shift+clic — le niveau médian EST le défaut. */
@@ -94,6 +99,10 @@ interface AwenState {
   setStepLength: (trackId: string, stepIndex: number, len: number) => void;
   /** Copie la mesure source vers la cible (toutes pistes). */
   copyMeasureAction: (from: number, to: number) => void;
+  /** Ajoute une piste du kind demandé (id généré, instrument par défaut). */
+  addTrackAction: (kind: TrackKind) => void;
+  /** Retire une piste — `melody` et `kick` (primaires) sont protégées. */
+  removeTrackAction: (trackId: string) => void;
   /** Ducking des leads contre le kick. */
   ducking: boolean;
   setDucking: (ducking: boolean) => void;
@@ -214,6 +223,21 @@ export const useAwenStore = create<AwenState>()(
       set({ pattern: setStepLen(get().pattern, trackId, stepIndex, len) });
     },
     copyMeasureAction: (from, to) => set({ pattern: copyMeasure(get().pattern, from, to) }),
+    addTrackAction: (kind) => {
+      const { pattern } = get();
+      let n = 2;
+      while (pattern.tracks.some((t) => t.id === `${kind}-${n}`)) n++;
+      const defaults: Record<TrackKind, { instrumentId: string; pitchRange?: { min: number; max: number } }> = {
+        melodic: { instrumentId: 'supersaw', pitchRange: { min: 0, max: 20 } },
+        kick: { instrumentId: 'kick-synth', pitchRange: { min: -7, max: 7 } },
+        perc: { instrumentId: 'clap' },
+      };
+      set({ pattern: addTrack(pattern, { id: `${kind}-${n}`, kind, ...defaults[kind] }) });
+    },
+    removeTrackAction: (trackId) => {
+      if (trackId === 'melody' || trackId === 'kick') return;
+      set({ pattern: removeTrack(get().pattern, trackId) });
+    },
     ducking: true,
     setDucking: (ducking) => set({ ducking }),
     setTrackVolume: (trackId, volume) => {
@@ -257,9 +281,16 @@ export const useAwenStore = create<AwenState>()(
       set({ pattern: deriveKickPitches(get().pattern, 'kick', 'melody', { useFifths: true }) }),
     euclidPercsAction: () => {
       let { pattern } = get();
-      pattern = euclidToTrack(pattern, 'clap', 2, 3); // 2 & 4
-      pattern = euclidToTrack(pattern, 'hats', 8, 0); // doubles-croches off
-      pattern = euclidToTrack(pattern, 'ride', 4, 1); // croches off
+      const presets: Array<[string, number, number]> = [
+        ['clap', 2, 3], // 2 & 4
+        ['hats', 8, 0], // doubles-croches off
+        ['ride', 4, 1], // croches off
+      ];
+      for (const [id, pulses, rotation] of presets) {
+        if (pattern.tracks.some((t) => t.id === id)) {
+          pattern = euclidToTrack(pattern, id, pulses, rotation);
+        }
+      }
       set({ pattern });
     },
     mutateAction: () => {

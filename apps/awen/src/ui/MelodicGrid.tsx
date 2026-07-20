@@ -7,8 +7,6 @@ import { Playhead } from './Playhead';
 import { StepCell } from './StepCell';
 import { TrackControls } from './TrackControls';
 
-const TRACK_ID = 'melody';
-
 const LEADS = [
   { value: 'supersaw', label: 'supersaw' },
   { value: 'square', label: 'square lead' },
@@ -31,7 +29,8 @@ interface DragState {
  * depuis une note = durée (notes tenues) ; clic sans mouvement = geste
  * habituel de la cellule.
  */
-export function MelodicGrid() {
+export function MelodicGrid({ trackId = 'melody' }: { trackId?: string }) {
+  const TRACK_ID = trackId;
   const track = useAwenStore((s) => s.pattern.tracks.find((t) => t.id === TRACK_ID));
   const lengthSteps = useAwenStore((s) => s.pattern.lengthSteps);
   const scale = useAwenStore((s) => s.scale);
@@ -100,8 +99,18 @@ export function MelodicGrid() {
     <section aria-label="Piste mélodique" className="flex flex-col gap-1">
       <div className="flex flex-wrap items-center gap-3">
         <h2 className="font-display text-sm font-black italic uppercase tracking-wider text-moss">
-          Mélodie
+          {TRACK_ID === 'melody' ? 'Mélodie' : TRACK_ID}
         </h2>
+        {TRACK_ID !== 'melody' && (
+          <button
+            type="button"
+            title="Supprimer cette piste"
+            onClick={() => useAwenStore.getState().removeTrackAction(TRACK_ID)}
+            className="rounded border border-ink/20 px-1.5 text-xs text-ink/50 hover:border-red-400 hover:text-red-300"
+          >
+            ✕
+          </button>
+        )}
         <select
           aria-label="Instrument de la mélodie"
           value={track.instrumentId}

@@ -10,6 +10,7 @@ import { PercLane } from './PercLane';
 import { TransportBar } from './TransportBar';
 
 export function App() {
+  const tracks = useAwenStore((s) => s.pattern.tracks);
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.repeat) return;
@@ -58,11 +59,35 @@ export function App() {
 
       <TransportBar />
       <GeneratorBar />
-      <MelodicGrid />
-      <KickSection />
-      <PercLane trackId="clap" label="Clap" />
-      <PercLane trackId="hats" label="Hats" />
-      <PercLane trackId="ride" label="Ride" />
+      {tracks.map((t) =>
+        t.kind === 'melodic' ? (
+          <MelodicGrid key={t.id} trackId={t.id} />
+        ) : t.kind === 'kick' ? (
+          <KickSection key={t.id} trackId={t.id} />
+        ) : (
+          <PercLane key={t.id} trackId={t.id} label={t.id} />
+        ),
+      )}
+
+      <div className="flex items-center gap-2 border-t border-ink/10 pt-3">
+        <span className="text-[10px] uppercase tracking-widest text-ink/50">Ajouter une piste</span>
+        {(
+          [
+            ['melodic', '+ lead'],
+            ['kick', '+ kick'],
+            ['perc', '+ perc'],
+          ] as const
+        ).map(([kind, label]) => (
+          <button
+            key={kind}
+            type="button"
+            onClick={() => useAwenStore.getState().addTrackAction(kind)}
+            className="rounded-md border border-dashed border-ink/30 px-3 py-1 text-xs text-ink/60 transition-colors hover:border-moss hover:text-ink"
+          >
+            {label}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

@@ -67,7 +67,8 @@ src/
 
 ## Direction musicale
 
-Hardstyle / rawstyle (ouverture uptempo). BPM défaut **150**, plage 140–200.
+Hardstyle / rawstyle (ouverture uptempo). BPM défaut **150** ; l'UI accepte
+60–220 (le kit ne verrouille pas le tempo — séquences lentes bienvenues).
 Gammes défaut : mineure naturelle et mineure harmonique. Le kick est central :
 il doit pouvoir être **pitché pour suivre la bassline** dans la grille — c'est LA
 feature. Résolution double-croche, patterns de 1 à 4 mesures (16–64 pas).
