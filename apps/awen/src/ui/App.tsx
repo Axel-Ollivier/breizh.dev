@@ -9,6 +9,8 @@ export function App() {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.code !== 'Space' || e.repeat) return;
       const target = e.target as HTMLElement | null;
+      // Convention DAW assumée : espace = transport partout, y compris sur un
+      // bouton focus (Entrée reste disponible pour activer les boutons au clavier).
       if (target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return;
       e.preventDefault();
       void audioEngine.toggle();

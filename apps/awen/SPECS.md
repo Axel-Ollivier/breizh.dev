@@ -51,7 +51,8 @@ affiche et que le moteur lit pas à pas.
 
 - `0` = tonique de l'octave de référence de la piste ; `+7` = tonique une octave
   au-dessus (gammes à 7 degrés) ; valeurs négatives = en dessous.
-- Conversion au moment du trigger : `scales.degreeToMidi(scale, rootMidi, degree)`.
+- Conversion au moment du trigger : `scales.degreeToMidi(scale, degree)` avec
+  `Scale = { rootMidi, mode }`.
 - **Le snap gamme est donc garanti par construction** : il est impossible de stocker
   une note hors gamme. Changer de gamme re-mappe toute la grille sans opération.
 - Plage mélodique : 2–3 octaves configurées par piste via `Track.pitchRange`

@@ -28,12 +28,17 @@ export function TransportBar() {
   };
 
   const changeLength = (length: PatternLength) => {
-    const { pattern, setLengthSteps } = useAwenStore.getState();
+    const { pattern, setLengthSteps, isPlaying: playing } = useAwenStore.getState();
     const truncates =
       length < pattern.lengthSteps &&
       pattern.tracks.some((t) => t.steps.slice(length).some((s) => s.on));
-    if (truncates && !window.confirm(`Réduire à ${length} pas efface les pas au-delà. Continuer ?`)) {
-      return;
+    if (truncates) {
+      // window.confirm bloque le thread : arrêter d'abord, sinon les ticks
+      // accumulés pendant le dialogue partent en rafale à la fermeture.
+      if (playing) audioEngine.stop();
+      if (!window.confirm(`Réduire à ${length} pas efface les pas au-delà. Continuer ?`)) {
+        return;
+      }
     }
     setLengthSteps(length);
   };

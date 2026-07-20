@@ -4,6 +4,7 @@ import { subscribeWithSelector } from 'zustand/middleware';
 import {
   clamp,
   createPattern,
+  DEFAULT_VELOCITY,
   resizePattern,
   setStepPitch,
   setStepVelocity,
@@ -17,8 +18,8 @@ export const BPM_MIN = 140;
 export const BPM_MAX = 200;
 export const DEFAULT_BPM = 150;
 
-/** Niveaux de vélocité cyclés par shift+clic dans la grille. */
-export const VELOCITY_LEVELS = [0.4, 0.8, 1] as const;
+/** Niveaux de vélocité cyclés par shift+clic — le niveau médian EST le défaut. */
+export const VELOCITY_LEVELS = [0.4, DEFAULT_VELOCITY, 1] as const;
 
 // Kit Hardstyle : pistes par défaut du MVP.
 const defaultPattern = (): Pattern =>
@@ -82,7 +83,7 @@ export const useAwenStore = create<AwenState>()(
       const { pattern } = get();
       const step = pattern.tracks.find((t) => t.id === trackId)?.steps[stepIndex];
       if (!step?.on) return;
-      const current = step.vel ?? VELOCITY_LEVELS[1];
+      const current = step.vel ?? DEFAULT_VELOCITY;
       const index = VELOCITY_LEVELS.findIndex((v) => Math.abs(v - current) < 1e-6);
       const next = VELOCITY_LEVELS[(index + 1) % VELOCITY_LEVELS.length] ?? VELOCITY_LEVELS[1];
       set({ pattern: setStepVelocity(pattern, trackId, stepIndex, next) });

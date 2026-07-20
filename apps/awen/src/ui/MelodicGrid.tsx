@@ -1,5 +1,6 @@
 import { memo } from 'react';
 
+import { DEFAULT_VELOCITY } from '../engine/pattern';
 import { degreeLabel } from '../engine/scales';
 import { useAwenStore } from '../state/store';
 import { Playhead } from './Playhead';
@@ -80,16 +81,22 @@ export function MelodicGrid() {
                 className="grid gap-px"
                 style={{ gridTemplateColumns: `repeat(${lengthSteps}, minmax(0, 1fr))` }}
               >
-                {track.steps.map((step, i) => (
-                  <Cell
-                    key={i}
-                    stepIndex={i}
-                    degree={degree}
-                    on={step.on && step.pitch === degree}
-                    vel={step.vel ?? 0.8}
-                    beatStart={i % 4 === 0}
-                  />
-                ))}
+                {track.steps.map((step, i) => {
+                  const on = step.on && step.pitch === degree;
+                  return (
+                    <Cell
+                      key={i}
+                      stepIndex={i}
+                      degree={degree}
+                      on={on}
+                      // vel stable (0) sur les cellules éteintes, sinon un
+                      // changement de vélocité re-rendrait les 21 cellules
+                      // de la colonne au lieu d'une.
+                      vel={on ? (step.vel ?? DEFAULT_VELOCITY) : 0}
+                      beatStart={i % 4 === 0}
+                    />
+                  );
+                })}
               </div>
             ))}
           </div>

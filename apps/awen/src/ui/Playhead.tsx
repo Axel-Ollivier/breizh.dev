@@ -17,7 +17,9 @@ export function Playhead({ lengthSteps }: { lengthSteps: number }) {
         el.style.opacity = '0';
       } else {
         el.style.opacity = '1';
-        el.style.transform = `translateX(${step * 100}%)`;
+        // 100 % = largeur propre de l'overlay (une cellule) ; le +1px suit
+        // les gouttières gap-px de la grille pour rester calé sur la colonne.
+        el.style.transform = `translateX(calc(${step} * (100% + 1px)))`;
       }
     });
   }, []);
@@ -27,7 +29,7 @@ export function Playhead({ lengthSteps }: { lengthSteps: number }) {
       ref={ref}
       aria-hidden
       className="pointer-events-none absolute inset-y-0 left-0 rounded-sm bg-ink/15 opacity-0 ring-1 ring-moss/60 transition-none"
-      style={{ width: `${100 / lengthSteps}%` }}
+      style={{ width: `calc((100% - ${lengthSteps - 1}px) / ${lengthSteps})` }}
     />
   );
 }

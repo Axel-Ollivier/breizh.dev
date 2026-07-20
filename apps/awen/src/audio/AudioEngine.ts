@@ -74,8 +74,12 @@ class AudioEngine {
     useAwenStore.getState().setPlaying(true);
   }
 
-  private stop(): void {
+  /** Arrêt immédiat (aussi utilisé par l'UI avant une action bloquante). */
+  stop(): void {
     Tone.getTransport().stop();
+    // Les callbacks Draw déjà planifiés dans la fenêtre de lookahead
+    // rallumeraient le playhead après l'arrêt : on purge la file d'abord.
+    Tone.getDraw().cancel();
     useAwenStore.getState().setPlaying(false);
     this.notifyStep(-1);
   }
@@ -112,25 +116,42 @@ class AudioEngine {
     const { pattern, scale } = useAwenStore.getState();
     const transport = Tone.getTransport();
     // Pas courant dérivé de la position du Transport (ticks → double-croches).
+    // getTicksAtTime rend un flottant : sans Math.round, ~2 % des frontières
+    // de pas retombent sur l'index précédent (double trigger + pas sauté).
     const ticksPerStep = transport.PPQ / 4;
-    const step = Math.floor(transport.getTicksAtTime(time) / ticksPerStep) % pattern.lengthSteps;
+    const step =
+      Math.floor(Math.round(transport.getTicksAtTime(time)) / ticksPerStep) %
+      pattern.lengthSteps;
 
     const anySolo = pattern.tracks.some((t) => t.solo);
     for (const track of pattern.tracks) {
       if (track.mute || (anySolo && !track.solo)) continue;
       const instrument = this.instruments.get(track.id);
       const stepData = track.steps[step];
-      if (!instrument || !stepData?.on || stepData.pitch === undefined) continue;
-      instrument.trigger(
-        {
-          midi: degreeToMidi(scale, stepData.pitch),
-          velocity: stepData.vel ?? DEFAULT_VELOCITY,
-        },
-        time,
-      );
+      if (!instrument || !stepData?.on) continue;
+      // Seules les pistes mélodiques exigent un pitch ; perc n'en a jamais,
+      // kick le résout plus tard (pitch lane ou followTrackId, phase 3) —
+      // à défaut, tonique de la gamme.
+      try {
+        let midi: number;
+        if (stepData.pitch !== undefined) midi = degreeToMidi(scale, stepData.pitch);
+        else if (track.kind === 'melodic') continue;
+        else midi = degreeToMidi(scale, 0);
+        instrument.trigger({ midi, velocity: stepData.vel ?? DEFAULT_VELOCITY }, time);
+      } catch (error) {
+        // Un pitch invalide (pattern écrit sans passer par les opérations)
+        // ne doit pas tuer le tick des autres pistes ni le playhead.
+        console.error(`Trigger impossible (piste ${track.id}, pas ${step}) :`, error);
+      }
     }
 
-    Tone.getDraw().schedule(() => this.notifyStep(step), time);
+    // Onglet caché : rAF est suspendu, la file Draw grossirait sans être
+    // drainée — on ne planifie le visuel que si l'onglet est visible.
+    if (!document.hidden) {
+      Tone.getDraw().schedule(() => {
+        if (useAwenStore.getState().isPlaying) this.notifyStep(step);
+      }, time);
+    }
   }
 
   private disposeNodes(): void {

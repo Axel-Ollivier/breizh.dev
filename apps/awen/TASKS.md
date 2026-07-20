@@ -18,17 +18,18 @@ de review. Un commit par étape cohérente. MVP = fin de phase 4.
 
 ## Phase 2 — Grille mélodique
 
-- [ ] `engine/scales.ts` : mineure naturelle/harmonique, `degreeToMidi`, plages d'octaves + tests
-- [ ] UI grille DOM/React, cellules mémoïsées ; piste mélodique (lignes = degrés sur 2–3 octaves, snap gamme par construction)
-- [ ] Toggle on/off par cellule + édition de vélocité
-- [ ] Lead supersaw (`PolySynth` fatsawtooth, count/spread élevés), interface commune `trigger(step, time)`
-- [ ] Playhead : overlay positionné piloté par `Tone.Draw` (zéro re-render de cellules)
-- [ ] Sélecteur de gamme (tonique + mode), longueur de pattern 16/32/48/64
-- [ ] Édition pendant la lecture prise en compte au pas suivant
-- [ ] Commit + review
+- [x] `engine/scales.ts` : mineure naturelle/harmonique, `degreeToMidi`, plages d'octaves + tests
+- [x] UI grille DOM/React, cellules mémoïsées ; piste mélodique (lignes = degrés sur 2–3 octaves, snap gamme par construction)
+- [x] Toggle on/off par cellule + édition de vélocité
+- [x] Lead supersaw (`PolySynth` fatsawtooth, count/spread élevés), interface commune `trigger(step, time)`
+- [x] Playhead : overlay positionné piloté par `Tone.Draw` (zéro re-render de cellules)
+- [x] Sélecteur de gamme (tonique + mode), longueur de pattern 16/32/48/64
+- [x] Édition pendant la lecture prise en compte au pas suivant
+- [x] Commit + review
 
 ## Phase 3 — Kicks & percus
 
+- [ ] Réconciliation moteur ↔ pattern : (re)créer/`dispose()` les instruments quand les pistes ou `instrumentId` changent (`setPattern` des générateurs/presets — la map est figée à l'init en phase 2)
 - [ ] Piste kick : lane de déclenchement + sous-lane de pitch (snap gamme) + toggle « suivre la mélodie » (`followTrackId`)
 - [ ] Kick sampler : import drag & drop de samples perso, plusieurs slots, repitch par `playbackRate` (persistance IndexedDB en stretch)
 - [ ] Kick synthétisé basique : osc + enveloppe de pitch rapide → `WaveShaper` hard clip + `Chebyshev` → EQ ; params punch / pitch de tail / drive / longueur
