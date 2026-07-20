@@ -1,7 +1,9 @@
 import { useEffect } from 'react';
 
 import { audioEngine } from '../audio/AudioEngine';
+import { KickSection } from './KickSection';
 import { MelodicGrid } from './MelodicGrid';
+import { PercLane } from './PercLane';
 import { TransportBar } from './TransportBar';
 
 export function App() {
@@ -37,6 +39,10 @@ export function App() {
 
       <TransportBar />
       <MelodicGrid />
+      <KickSection />
+      <PercLane trackId="clap" label="Clap" />
+      <PercLane trackId="hats" label="Hats" />
+      <PercLane trackId="ride" label="Ride" />
     </div>
   );
 }

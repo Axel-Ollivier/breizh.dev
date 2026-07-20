@@ -8,6 +8,12 @@ import {
   resizePattern,
   setStepPitch,
   setStepVelocity,
+  setTrackFollow,
+  setTrackInstrument,
+  setTrackMute,
+  setTrackSend,
+  setTrackSolo,
+  setTrackVolume,
   toggleStep,
   type Pattern,
   type PatternLength,
@@ -51,6 +57,20 @@ interface AwenState {
   clickMelodicCell: (trackId: string, stepIndex: number, degree: number) => void;
   /** Shift+clic : cycle la vélocité d'un pas actif (VELOCITY_LEVELS). */
   cycleStepVelocity: (trackId: string, stepIndex: number) => void;
+  /** Toggle simple d'un pas kick/perc (lane de déclenchement). */
+  toggleLaneStep: (trackId: string, stepIndex: number) => void;
+  /** Molette sur la pitch lane du kick : ±delta degrés (pose 0 si absent). */
+  adjustKickPitch: (trackId: string, stepIndex: number, delta: number) => void;
+  /** Toggle « suivre la mélodie » d'une piste kick. */
+  setKickFollow: (trackId: string, followTrackId: string | undefined) => void;
+  setTrackInstrument: (trackId: string, instrumentId: string) => void;
+  setTrackVolume: (trackId: string, volume: number) => void;
+  setTrackMute: (trackId: string, mute: boolean) => void;
+  setTrackSolo: (trackId: string, solo: boolean) => void;
+  setTrackSend: (trackId: string, sendFx: number) => void;
+  /** Nom du sample de kick importé (le buffer vit dans le moteur audio). */
+  kickSampleName: string | null;
+  setKickSampleName: (name: string | null) => void;
 }
 
 export const useAwenStore = create<AwenState>()(
@@ -88,5 +108,29 @@ export const useAwenStore = create<AwenState>()(
       const next = VELOCITY_LEVELS[(index + 1) % VELOCITY_LEVELS.length] ?? VELOCITY_LEVELS[1];
       set({ pattern: setStepVelocity(pattern, trackId, stepIndex, next) });
     },
+    toggleLaneStep: (trackId, stepIndex) =>
+      set({ pattern: toggleStep(get().pattern, trackId, stepIndex) }),
+    adjustKickPitch: (trackId, stepIndex, delta) => {
+      const { pattern } = get();
+      const step = pattern.tracks.find((t) => t.id === trackId)?.steps[stepIndex];
+      if (!step?.on) return;
+      set({ pattern: setStepPitch(pattern, trackId, stepIndex, (step.pitch ?? 0) + delta) });
+    },
+    setKickFollow: (trackId, followTrackId) =>
+      set({ pattern: setTrackFollow(get().pattern, trackId, followTrackId) }),
+    setTrackInstrument: (trackId, instrumentId) =>
+      set({ pattern: setTrackInstrument(get().pattern, trackId, instrumentId) }),
+    setTrackVolume: (trackId, volume) => {
+      if (!Number.isFinite(volume)) return;
+      set({ pattern: setTrackVolume(get().pattern, trackId, volume) });
+    },
+    setTrackMute: (trackId, mute) => set({ pattern: setTrackMute(get().pattern, trackId, mute) }),
+    setTrackSolo: (trackId, solo) => set({ pattern: setTrackSolo(get().pattern, trackId, solo) }),
+    setTrackSend: (trackId, sendFx) => {
+      if (!Number.isFinite(sendFx)) return;
+      set({ pattern: setTrackSend(get().pattern, trackId, sendFx) });
+    },
+    kickSampleName: null,
+    setKickSampleName: (kickSampleName) => set({ kickSampleName }),
   })),
 );

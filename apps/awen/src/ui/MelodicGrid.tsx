@@ -1,45 +1,11 @@
-import { memo } from 'react';
-
 import { DEFAULT_VELOCITY } from '../engine/pattern';
 import { degreeLabel } from '../engine/scales';
 import { useAwenStore } from '../state/store';
 import { Playhead } from './Playhead';
+import { StepCell } from './StepCell';
+import { TrackControls } from './TrackControls';
 
 const TRACK_ID = 'melody';
-
-interface CellProps {
-  stepIndex: number;
-  degree: number;
-  on: boolean;
-  vel: number;
-  /** Premier pas d'un temps (colonne accentuée visuellement). */
-  beatStart: boolean;
-}
-
-/**
- * Cellule mémoïsée : props primitives uniquement, handlers stables via
- * getState() — la grille ne re-render que les cellules réellement modifiées.
- */
-const Cell = memo(function Cell({ stepIndex, degree, on, vel, beatStart }: CellProps) {
-  return (
-    <button
-      type="button"
-      aria-label={`Pas ${stepIndex + 1}, degré ${degree}`}
-      aria-pressed={on}
-      onClick={(e) => {
-        const { clickMelodicCell, cycleStepVelocity } = useAwenStore.getState();
-        if (e.shiftKey) cycleStepVelocity(TRACK_ID, stepIndex);
-        else clickMelodicCell(TRACK_ID, stepIndex, degree);
-      }}
-      className={`h-5 w-full rounded-[3px] border transition-colors ${
-        on
-          ? 'border-moss bg-moss'
-          : `border-ink/10 hover:border-moss/60 ${beatStart ? 'bg-ink/10' : 'bg-ink/5'}`
-      }`}
-      style={on ? { opacity: 0.35 + 0.65 * vel } : undefined}
-    />
-  );
-});
 
 /**
  * Piste mélodique : lignes = degrés de la gamme (aigus en haut), colonnes =
@@ -57,9 +23,14 @@ export function MelodicGrid() {
 
   return (
     <section aria-label="Piste mélodique" className="flex flex-col gap-1">
-      <h2 className="font-display text-sm font-black italic uppercase tracking-wider text-moss">
-        Mélodie <span className="text-ink/40">· supersaw</span>
-      </h2>
+      <div className="flex items-center gap-3">
+        <h2 className="font-display text-sm font-black italic uppercase tracking-wider text-moss">
+          Mélodie <span className="text-ink/40">· supersaw</span>
+        </h2>
+        <div className="ml-auto">
+          <TrackControls trackId={TRACK_ID} />
+        </div>
+      </div>
       <div className="flex gap-2">
         <div className="flex flex-col gap-px">
           {degrees.map((degree) => (
@@ -84,16 +55,19 @@ export function MelodicGrid() {
                 {track.steps.map((step, i) => {
                   const on = step.on && step.pitch === degree;
                   return (
-                    <Cell
+                    <StepCell
                       key={i}
-                      stepIndex={i}
-                      degree={degree}
+                      ariaLabel={`Pas ${i + 1}, degré ${degree}`}
                       on={on}
                       // vel stable (0) sur les cellules éteintes, sinon un
-                      // changement de vélocité re-rendrait les 21 cellules
-                      // de la colonne au lieu d'une.
+                      // changement de vélocité re-rendrait toute la colonne.
                       vel={on ? (step.vel ?? DEFAULT_VELOCITY) : 0}
                       beatStart={i % 4 === 0}
+                      onActivate={(shift) => {
+                        const s = useAwenStore.getState();
+                        if (shift) s.cycleStepVelocity(TRACK_ID, i);
+                        else s.clickMelodicCell(TRACK_ID, i, degree);
+                      }}
                     />
                   );
                 })}

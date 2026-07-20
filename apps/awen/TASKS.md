@@ -29,13 +29,14 @@ de review. Un commit par étape cohérente. MVP = fin de phase 4.
 
 ## Phase 3 — Kicks & percus
 
-- [ ] Réconciliation moteur ↔ pattern : (re)créer/`dispose()` les instruments quand les pistes ou `instrumentId` changent (`setPattern` des générateurs/presets — la map est figée à l'init en phase 2)
-- [ ] Piste kick : lane de déclenchement + sous-lane de pitch (snap gamme) + toggle « suivre la mélodie » (`followTrackId`)
-- [ ] Kick sampler : import drag & drop de samples perso, plusieurs slots, repitch par `playbackRate` (persistance IndexedDB en stretch)
-- [ ] Kick synthétisé basique : osc + enveloppe de pitch rapide → `WaveShaper` hard clip + `Chebyshev` → EQ ; params punch / pitch de tail / drive / longueur
-- [ ] Pistes perc : clap (2 & 4), hats, ride offbeat — `NoiseSynth` filtré / ride synthétique
-- [ ] Mixage par piste : volume, mute/solo, send FX ; sends delay synchronisé + reverb
-- [ ] Gain staging par piste + `EQ3` + `Limiter` sur le master (obligatoire dès cette phase)
+- [x] Réconciliation moteur ↔ pattern : (re)créer/`dispose()` les instruments quand les pistes ou `instrumentId` changent (`setPattern` des générateurs/presets — la map est figée à l'init en phase 2)
+- [x] Piste kick : lane de déclenchement + sous-lane de pitch (snap gamme) + toggle « suivre la mélodie » (`followTrackId`)
+- [x] Kick sampler : import drag & drop / fichier, repitch par `playbackRate` (natif = tonique)
+- [ ] Kick sampler — stretch : plusieurs slots, persistance IndexedDB
+- [x] Kick synthétisé basique : osc + enveloppe de pitch rapide → `WaveShaper` hard clip + `Chebyshev` → EQ ; params punch / pitch de tail / drive / longueur
+- [x] Pistes perc : clap (2 & 4), hats, ride offbeat — `NoiseSynth` filtré / ride synthétique
+- [x] Mixage par piste : volume, mute/solo, send FX ; sends delay synchronisé + reverb
+- [x] Gain staging par piste + `EQ3` + `Limiter` sur le master (obligatoire dès cette phase)
 - [ ] Commit + review
 
 ## Phase 4 — Générateurs *(= MVP)*
