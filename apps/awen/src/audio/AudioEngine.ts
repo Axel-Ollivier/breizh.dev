@@ -75,6 +75,9 @@ class AudioEngine {
 
   private async initialize(): Promise<void> {
     await Tone.start();
+    // Le tempo doit être posé AVANT la création des FX : '8n.' est évalué au
+    // bpm courant du Transport (sinon delay calé sur les 120 BPM par défaut).
+    Tone.getTransport().bpm.value = useAwenStore.getState().bpm;
 
     // Master : bus -> EQ3 -> Limiter -> destination.
     this.limiter = new Tone.Limiter(-1).toDestination();
@@ -309,8 +312,11 @@ class AudioEngine {
     }
 
     // Ducking : les pistes mélodiques plongent brièvement quand un kick
-    // audible tombe sur ce pas (enveloppe de gain simple).
-    if (kickHit && useAwenStore.getState().ducking) {
+    // audible tombe sur ce pas (enveloppe de gain simple). Un kick sans
+    // instrument (sampler vide) ne doit pas faire pomper dans le silence.
+    const kickAudible =
+      kickHit && triggers.some((t) => t.isKick && this.tracks.get(t.trackId)?.instrument);
+    if (kickAudible && useAwenStore.getState().ducking) {
       for (const nodes of this.tracks.values()) {
         const duck = nodes.duck;
         if (!duck) continue;

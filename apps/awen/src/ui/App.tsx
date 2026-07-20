@@ -13,6 +13,8 @@ export function App() {
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.repeat) return;
+      // Ne jamais capter les chords navigateur (Cmd+R, Ctrl+G, Cmd+M…).
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
       const target = e.target as HTMLElement | null;
       if (target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return;
       // Convention DAW assumée : espace = transport partout, y compris sur un

@@ -312,6 +312,18 @@ describe('len / drive / copyMeasure (phase 5)', () => {
     expect(() => setTrackDrive(p, 'kick', NaN)).toThrow(/non fini/);
   });
 
+  it('re-cape len à la copie et à la réduction (invariant SPECS §2)', () => {
+    let p = resizePattern(make(), 32);
+    p = toggleStep(p, 'melody', 12, 5);
+    p = setStepLen(p, 'melody', 12, 8); // la tenue déborde dans la mesure 2
+    const copied = copyMeasure(p, 0, 1);
+    expect(copied.tracks[0]?.steps[28]?.len).toBe(4); // 32 - 28
+    expect(validatePattern(copied)).toEqual([]);
+    const shrunk = resizePattern(p, 16);
+    expect(shrunk.tracks[0]?.steps[12]?.len).toBe(4); // 16 - 12
+    expect(validatePattern(shrunk)).toEqual([]);
+  });
+
   it('copyMeasure copie toutes les pistes, borne les mesures', () => {
     let p = resizePattern(make(), 32);
     p = toggleStep(p, 'melody', 2, 8);

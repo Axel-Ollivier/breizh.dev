@@ -42,7 +42,7 @@ export async function renderPatternWav(opts: RenderOptions): Promise<Blob> {
     const masterEq = new Tone.EQ3().connect(limiter);
     const masterBus = new Tone.Gain(0.9).connect(masterEq);
     const fxDelay = new Tone.FeedbackDelay({
-      delayTime: stepSec * 6, // '8n.' au bpm du rendu
+      delayTime: stepSec * 3, // '8n.' = croche pointée = 3 doubles-croches
       feedback: 0.3,
       wet: 1,
     }).connect(masterBus);
@@ -76,7 +76,9 @@ export async function renderPatternWav(opts: RenderOptions): Promise<Blob> {
         if (instrument instanceof KickSampler) instrument.rootMidi = tonicMidi;
         instrument.trigger(resolved, time);
       }
-      if (kickHit && ducking) {
+      const kickAudible =
+        kickHit && triggers.some((t) => t.isKick && instruments.has(t.trackId));
+      if (kickAudible && ducking) {
         for (const duck of ducks) {
           duck.gain.cancelScheduledValues(time);
           duck.gain.setValueAtTime(0.2, time);

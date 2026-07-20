@@ -34,7 +34,9 @@ export class KickSampler implements Instrument {
   }
 
   trigger(step: ResolvedStep, time: number): void {
-    const buffer = this.buffers[step.variant ?? 0] ?? this.buffers[0];
+    // Slot demandé, sinon premier slot chargé (un seul sample en B ne doit
+    // pas rendre les pas en variante A muets).
+    const buffer = this.buffers[step.variant ?? 0] ?? this.buffers.find(Boolean) ?? null;
     if (!buffer?.loaded) return;
     const rate = Math.pow(2, (step.midi - this.rootMidi) / 12);
     const gain = new Tone.Gain(step.velocity).connect(this.output);

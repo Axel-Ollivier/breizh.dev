@@ -1,6 +1,11 @@
 import type { MelodyCharacter } from '../engine/markov';
-import { validatePattern, type Pattern } from '../engine/pattern';
-import type { Scale } from '../engine/scales';
+import {
+  PATTERN_LENGTHS,
+  validatePattern,
+  type Pattern,
+  type PatternLength,
+} from '../engine/pattern';
+import { SCALE_MODES, type Scale } from '../engine/scales';
 import { useAwenStore } from './store';
 
 export interface PresetV1 {
@@ -30,6 +35,28 @@ export function applyPreset(raw: unknown): string | null {
   const preset = raw as Partial<PresetV1> | null;
   if (!preset || preset.version !== 1 || !preset.pattern || !preset.scale) {
     return 'Preset illisible (version ou champs manquants).';
+  }
+  // Structure : longueur connue, pistes attendues (les générateurs et l'UI
+  // référencent les ids melody/kick), gamme valide — sinon le store serait
+  // empoisonné puis autosauvé (crash au rendu à chaque démarrage).
+  if (!PATTERN_LENGTHS.includes(preset.pattern.lengthSteps as PatternLength)) {
+    return `Longueur de pattern inconnue : ${String(preset.pattern.lengthSteps)}`;
+  }
+  const tracks = preset.pattern.tracks;
+  if (!Array.isArray(tracks) || tracks.length === 0) return 'Pistes manquantes.';
+  if (!tracks.some((t) => t.id === 'melody' && t.kind === 'melodic')) {
+    return 'Piste « melody » manquante.';
+  }
+  if (!tracks.some((t) => t.id === 'kick' && t.kind === 'kick')) {
+    return 'Piste « kick » manquante.';
+  }
+  if (
+    !SCALE_MODES.includes(preset.scale.mode) ||
+    !Number.isFinite(preset.scale.rootMidi) ||
+    preset.scale.rootMidi < 24 ||
+    preset.scale.rootMidi > 96
+  ) {
+    return 'Gamme invalide.';
   }
   const errors = validatePattern(preset.pattern);
   if (errors.length > 0) return `Pattern invalide : ${errors[0]}`;

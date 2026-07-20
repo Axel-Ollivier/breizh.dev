@@ -201,9 +201,18 @@ export function setStepPitch(
   });
 }
 
+/** Re-cape la durée d'une note à la fin du pattern (invariant len, SPECS §2). */
+function capLen(step: Step, index: number, lengthSteps: number): Step {
+  if (step.len === undefined || index + step.len <= lengthSteps) return step;
+  const capped = lengthSteps - index;
+  const { len: _drop, ...rest } = step;
+  return capped <= 1 ? rest : { ...rest, len: capped };
+}
+
 /**
  * Extension : nouveaux pas off. Réduction : troncature (les données coupées
- * sont perdues — l'UI est responsable de confirmer si la zone n'est pas vide).
+ * sont perdues — l'UI est responsable de confirmer si la zone n'est pas vide) ;
+ * les notes tenues qui débordent la nouvelle fin sont re-capées.
  */
 export function resizePattern(pattern: Pattern, newLength: PatternLength): Pattern {
   if (newLength === pattern.lengthSteps) return pattern;
@@ -213,7 +222,7 @@ export function resizePattern(pattern: Pattern, newLength: PatternLength): Patte
       ...track,
       steps:
         newLength < track.steps.length
-          ? track.steps.slice(0, newLength)
+          ? track.steps.slice(0, newLength).map((s, i) => capLen(s, i, newLength))
           : [
               ...track.steps,
               ...Array.from({ length: newLength - track.steps.length }, emptyStep),
@@ -392,7 +401,8 @@ export function copyMeasure(pattern: Pattern, fromMeasure: number, toMeasure: nu
       steps: track.steps.map((step, i) => {
         const measure = Math.floor(i / 16);
         if (measure !== toMeasure) return step;
-        return { ...track.steps[fromMeasure * 16 + (i % 16)]! };
+        // Une note tenue copiée près de la fin est re-capée (invariant len).
+        return capLen({ ...track.steps[fromMeasure * 16 + (i % 16)]! }, i, pattern.lengthSteps);
       }),
     })),
   };

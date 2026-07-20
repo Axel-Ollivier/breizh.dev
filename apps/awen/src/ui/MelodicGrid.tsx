@@ -20,6 +20,9 @@ interface DragState {
   degree: number;
   startCol: number;
   moved: boolean;
+  /** Capture posée au premier mouvement seulement : un clic simple doit
+   * rester ciblé sur la cellule (sinon effacer/vélocité ne marchent plus). */
+  captured: boolean;
 }
 
 /**
@@ -48,21 +51,26 @@ export function MelodicGrid() {
   };
 
   const onRowPointerDown = (degree: number) => (e: ReactPointerEvent<HTMLDivElement>) => {
+    suppressClick.current = false;
     const col = colFromEvent(e);
     const step = track.steps[col];
     if (step?.on && step.pitch === degree) {
-      drag.current = { degree, startCol: col, moved: false };
-      e.currentTarget.setPointerCapture(e.pointerId);
+      drag.current = { degree, startCol: col, moved: false, captured: false };
     }
   };
 
   const onRowPointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
     const state = drag.current;
-    if (!state) return;
+    if (!state || e.buttons === 0) return;
     const col = colFromEvent(e);
+    if (col !== state.startCol && !state.captured) {
+      state.captured = true;
+      state.moved = true;
+      e.currentTarget.setPointerCapture(e.pointerId);
+    }
+    if (!state.moved) return;
     const len = Math.max(1, col - state.startCol + 1);
     const current = track.steps[state.startCol]?.len ?? 1;
-    if (col !== state.startCol) state.moved = true;
     if (len !== current) {
       useAwenStore.getState().setStepLength(TRACK_ID, state.startCol, len);
     }
@@ -70,6 +78,11 @@ export function MelodicGrid() {
 
   const onRowPointerUp = () => {
     if (drag.current?.moved) suppressClick.current = true;
+    drag.current = null;
+  };
+
+  const onRowPointerCancel = () => {
+    // Pas de clic à venir après un cancel : ne pas armer la suppression.
     drag.current = null;
   };
 
@@ -146,7 +159,7 @@ export function MelodicGrid() {
                 onPointerDown={onRowPointerDown(degree)}
                 onPointerMove={onRowPointerMove}
                 onPointerUp={onRowPointerUp}
-                onPointerCancel={onRowPointerUp}
+                onPointerCancel={onRowPointerCancel}
               >
                 {track.steps.map((step, i) => {
                   const on = step.on && step.pitch === degree;

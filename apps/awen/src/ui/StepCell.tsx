@@ -54,4 +54,18 @@ export const StepCell = memo(function StepCell({
       style={on ? { opacity: 0.35 + 0.65 * vel } : undefined}
     />
   );
-});
+},
+// `onActivate` est volontairement exclu de la comparaison : les parents le
+// recréent à chaque rendu (closure), mais il ne capture que des constantes de
+// position (trackId/step/degré) et lit le store via getState — l'ignorer est
+// sûr et préserve la mémoïsation des ~1300 cellules.
+(prev, next) =>
+  prev.on === next.on &&
+  prev.cont === next.cont &&
+  prev.hasTail === next.hasTail &&
+  prev.vel === next.vel &&
+  prev.beatStart === next.beatStart &&
+  prev.tall === next.tall &&
+  prev.small === next.small &&
+  prev.accent === next.accent &&
+  prev.ariaLabel === next.ariaLabel);
