@@ -35,6 +35,18 @@ services:
       - "traefik.http.routers.krampouezh.tls.certresolver=letsencrypt"
       - "traefik.http.services.krampouezh.loadbalancer.server.port=80"
 
+  awen:
+    image: ghcr.io/axel-ollivier/awen:latest
+    restart: unless-stopped
+    networks:
+      - web
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.awen.rule=Host(`awen.breizh.dev`)"
+      - "traefik.http.routers.awen.entrypoints=websecure"
+      - "traefik.http.routers.awen.tls.certresolver=letsencrypt"
+      - "traefik.http.services.awen.loadbalancer.server.port=80"
+
 networks:
   web:
     external: true

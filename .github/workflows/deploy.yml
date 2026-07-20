@@ -28,6 +28,9 @@ jobs:
           - name: krampouezh
             context: apps/krampouezh
             dockerfile: apps/krampouezh/Dockerfile
+          - name: awen
+            context: apps/awen
+            dockerfile: apps/awen/Dockerfile
 
     steps:
       - name: Checkout
