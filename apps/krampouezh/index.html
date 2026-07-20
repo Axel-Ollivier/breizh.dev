@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Krampouezh — Empile les crêpes</title>
+  <meta name="description" content="Empile les crêpes le plus haut possible. Un petit jeu breton signé breizh.dev.">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      font-family: "Avenir Next", Avenir, "Segoe UI", Helvetica, Arial, sans-serif;
+      background: #faf6ef;
+      touch-action: manipulation;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    #game {
+      display: block;
+      width: 100%;
+      height: 100%;
+      cursor: pointer;
+    }
+
+    .overlay {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.75rem;
+      text-align: center;
+      color: #2b2b2b;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .overlay.visible { opacity: 1; }
+
+    .overlay h1 {
+      font-size: clamp(2rem, 8vw, 3.2rem);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .overlay .flag {
+      font-size: 1.4rem;
+      letter-spacing: 0.3em;
+    }
+
+    .overlay p {
+      font-size: 1.05rem;
+      color: #6b6357;
+    }
+
+    .overlay .big-score {
+      font-size: clamp(3rem, 14vw, 5rem);
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .overlay .hint {
+      margin-top: 1rem;
+      padding: 0.7rem 1.6rem;
+      border: 2px solid #2b2b2b;
+      border-radius: 999px;
+      font-weight: 600;
+      animation: pulse 1.6s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.06); }
+    }
+
+    #hud {
+      position: fixed;
+      top: max(1rem, env(safe-area-inset-top));
+      left: 0;
+      right: 0;
+      text-align: center;
+      color: #2b2b2b;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    #hud.visible { opacity: 1; }
+
+    #hud .score {
+      font-size: 3rem;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    #hud .best {
+      font-size: 0.9rem;
+      color: #6b6357;
+      margin-top: 0.2rem;
+    }
+
+    footer {
+      position: fixed;
+      bottom: max(0.6rem, env(safe-area-inset-bottom));
+      left: 0;
+      right: 0;
+      text-align: center;
+      font-size: 0.75rem;
+      color: #b0a794;
+      pointer-events: none;
+    }
+
+    footer a { color: inherit; pointer-events: auto; }
+  </style>
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <div id="hud">
+    <div class="score">0</div>
+    <div class="best"></div>
+  </div>
+
+  <div id="title-screen" class="overlay visible">
+    <div class="flag">⬛⬜⬛</div>
+    <h1>Krampouezh</h1>
+    <p>Empile les crêpes le plus haut possible.<br>Ce qui dépasse est coupé !</p>
+    <div class="hint">Tape pour jouer</div>
+  </div>
+
+  <div id="over-screen" class="overlay">
+    <p>Ta pile de crêpes :</p>
+    <div class="big-score">0</div>
+    <p class="record-line"></p>
+    <div class="hint">Rejouer</div>
+  </div>
+
+  <footer>krampouezh.<a href="https://breizh.dev">breizh.dev</a></footer>
+
+  <script>
+    'use strict';
+
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    const hud = document.getElementById('hud');
+    const hudScore = hud.querySelector('.score');
+    const hudBest = hud.querySelector('.best');
+    const titleScreen = document.getElementById('title-screen');
+    const overScreen = document.getElementById('over-screen');
+    const overScore = overScreen.querySelector('.big-score');
+    const overRecord = overScreen.querySelector('.record-line');
+
+    const BLOCK_H = 30;          // hauteur d'une crêpe (px CSS)
+    const BASE_W_RATIO = 0.55;   // largeur de départ vs largeur écran
+    const PERFECT_TOLERANCE = 7; // marge (px) pour un empilement parfait
+    const BEST_KEY = 'krampouezh-best';
+
+    let W = 0, H = 0, dpr = 1;
+    let state = 'title'; // title | playing | over
+    let stack = [];      // { x, w, seed, butter }
+    let current = null;  // { x, w, dir, speed, seed }
+    let debris = [];     // { x, w, y, vx, vy, rot, vr, seed }
+    let popups = [];     // { text, x, y, life }
+    let score = 0;
+    let combo = 0;
+    let best = Number(localStorage.getItem(BEST_KEY)) || 0;
+    let cameraY = 0;     // décalage vertical du monde (monte avec la pile)
+    let cameraTarget = 0;
+    let inputLocked = false;
+
+    function resize() {
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      W = window.innerWidth;
+      H = window.innerHeight;
+      canvas.width = W * dpr;
+      canvas.height = H * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // Position Y (écran) du haut de la crêpe d'indice i
+    function blockTopY(i) {
+      return H - 90 - (i + 1) * BLOCK_H + cameraY;
+    }
+
+    function newGame() {
+      stack = [{ x: (W - W * BASE_W_RATIO) / 2, w: W * BASE_W_RATIO, seed: Math.random(), butter: false }];
+      debris = [];
+      popups = [];
+      score = 0;
+      combo = 0;
+      cameraY = 0;
+      cameraTarget = 0;
+      spawnCurrent();
+      state = 'playing';
+      hudScore.textContent = '0';
+      hudBest.textContent = best > 0 ? `Record : ${best}` : '';
+      titleScreen.classList.remove('visible');
+      overScreen.classList.remove('visible');
+      hud.classList.add('visible');
+    }
+
+    function spawnCurrent() {
+      const top = stack[stack.length - 1];
+      const fromLeft = stack.length % 2 === 0;
+      current = {
+        x: fromLeft ? -top.w : W,
+        w: top.w,
+        dir: fromLeft ? 1 : -1,
+        speed: Math.min(3 + score * 0.09, 8) * (W / 500),
+        seed: Math.random(),
+      };
+    }
+
+    function drop() {
+      const top = stack[stack.length - 1];
+      const delta = current.x - top.x;
+      const overlapStart = Math.max(current.x, top.x);
+      const overlapEnd = Math.min(current.x + current.w, top.x + top.w);
+      const overlap = overlapEnd - overlapStart;
+      const y = blockTopY(stack.length);
+
+      if (overlap <= 0) {
+        // Raté : toute la crêpe tombe
+        debris.push({ x: current.x, w: current.w, y, vx: current.dir * 2, vy: -2, rot: 0, vr: current.dir * 0.06, seed: current.seed });
+        current = null;
+        gameOver();
+        return;
+      }
+
+      const perfect = Math.abs(delta) <= PERFECT_TOLERANCE;
+      if (perfect) {
+        combo++;
+        const bonus = combo;
+        score += 1 + bonus;
+        // Une pile parfaite regonfle légèrement la crêpe
+        const grow = Math.min(10, W * BASE_W_RATIO - top.w);
+        stack.push({ x: top.x - grow / 2, w: top.w + grow, seed: current.seed, butter: true });
+        popups.push({ text: bonus > 1 ? `Parfait ! +${1 + bonus}` : 'Parfait ! +2', x: W / 2, y: y - 14, life: 1 });
+      } else {
+        combo = 0;
+        score += 1;
+        // La partie qui dépasse tombe
+        if (delta > 0) {
+          debris.push({ x: overlapEnd, w: current.w - overlap, y, vx: 1.5, vy: -1.5, rot: 0, vr: 0.05, seed: current.seed });
+        } else {
+          debris.push({ x: current.x, w: current.w - overlap, y, vx: -1.5, vy: -1.5, rot: 0, vr: -0.05, seed: current.seed });
+        }
+        stack.push({ x: overlapStart, w: overlap, seed: current.seed, butter: false });
+      }
+
+      hudScore.textContent = score;
+      cameraTarget = Math.max(0, (stack.length * BLOCK_H) - H * 0.45);
+      spawnCurrent();
+    }
+
+    function gameOver() {
+      state = 'over';
+      inputLocked = true;
+      const isRecord = score > best;
+      if (isRecord) {
+        best = score;
+        localStorage.setItem(BEST_KEY, best);
+      }
+      overScore.textContent = score;
+      overRecord.textContent = isRecord && score > 0
+        ? '🎉 Nouveau record !'
+        : (best > 0 ? `Record : ${best}` : '');
+      setTimeout(() => {
+        hud.classList.remove('visible');
+        overScreen.classList.add('visible');
+        inputLocked = false;
+      }, 700);
+    }
+
+    function onTap(e) {
+      if (e && e.target && e.target.closest && e.target.closest('a')) return;
+      if (inputLocked) return;
+      if (state === 'playing') drop();
+      else newGame();
+    }
+    window.addEventListener('pointerdown', onTap);
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Space' || e.code === 'Enter') {
+        e.preventDefault();
+        onTap();
+      }
+    });
+
+    // ---- Rendu ----
+
+    // Petit générateur pseudo-aléatoire déterministe pour les taches de cuisson
+    function mulberry(seed) {
+      let t = Math.floor(seed * 1e9);
+      return () => {
+        t += 0x6D2B79F5;
+        let r = Math.imul(t ^ (t >>> 15), 1 | t);
+        r = (r + Math.imul(r ^ (r >>> 7), 61 | r)) ^ r;
+        return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+      };
+    }
+
+    function drawCrepe(x, y, w, seed, butter) {
+      const r = BLOCK_H / 2;
+      const grad = ctx.createLinearGradient(0, y, 0, y + BLOCK_H);
+      grad.addColorStop(0, '#f2b95c');
+      grad.addColorStop(0.5, '#e09b3a');
+      grad.addColorStop(1, '#b96f22');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.roundRect(x, y, w, BLOCK_H, r);
+      ctx.fill();
+
+      // Bord inférieur plus cuit
+      ctx.strokeStyle = 'rgba(122, 66, 15, 0.35)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // Taches de cuisson déterministes
+      const rand = mulberry(seed);
+      ctx.fillStyle = 'rgba(140, 80, 20, 0.28)';
+      const spots = Math.max(2, Math.floor(w / 45));
+      for (let i = 0; i < spots; i++) {
+        const sx = x + r + rand() * Math.max(1, w - 2 * r);
+        const sy = y + 6 + rand() * (BLOCK_H - 12);
+        const sr = 2 + rand() * 4;
+        ctx.beginPath();
+        ctx.ellipse(sx, sy, sr * 1.4, sr, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Reflet doré sur le dessus
+      ctx.fillStyle = 'rgba(255, 240, 200, 0.35)';
+      ctx.beginPath();
+      ctx.roundRect(x + 4, y + 3, Math.max(0, w - 8), 6, 3);
+      ctx.fill();
+
+      // Noisette de beurre pour les empilements parfaits
+      if (butter) {
+        const bw = 14, bh = 9;
+        const bx = x + w / 2 - bw / 2;
+        const by = y - bh + 3;
+        ctx.fillStyle = '#ffe27a';
+        ctx.beginPath();
+        ctx.roundRect(bx, by, bw, bh, 2);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(180, 140, 20, 0.5)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+    }
+
+    function drawPlate() {
+      const y = blockTopY(-1); // dessus de l'assiette = dessous de la 1re crêpe
+      const pw = Math.min(W * 0.8, W * BASE_W_RATIO + 90);
+      const px = (W - pw) / 2;
+      // Assiette
+      ctx.fillStyle = '#e5e0d5';
+      ctx.beginPath();
+      ctx.ellipse(W / 2, y + 14, pw / 2, 16, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#f3efe6';
+      ctx.beginPath();
+      ctx.ellipse(W / 2, y + 10, pw / 2 - 10, 11, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Pied
+      ctx.fillStyle = '#d8d2c4';
+      ctx.fillRect(px + pw / 2 - 30, y + 22, 60, 8);
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, W, H);
+
+      // Rayures gwenn-ha-du discrètes en fond
+      ctx.fillStyle = 'rgba(43, 43, 43, 0.03)';
+      for (let i = 0; i < 5; i++) {
+        ctx.fillRect(0, (H / 9) * (i * 2), W, H / 9);
+      }
+
+      drawPlate();
+
+      for (let i = 0; i < stack.length; i++) {
+        drawCrepe(stack[i].x, blockTopY(i), stack[i].w, stack[i].seed, stack[i].butter);
+      }
+
+      if (current && state === 'playing') {
+        drawCrepe(current.x, blockTopY(stack.length), current.w, current.seed, false);
+      }
+
+      for (const d of debris) {
+        ctx.save();
+        ctx.translate(d.x + d.w / 2, d.y + BLOCK_H / 2);
+        ctx.rotate(d.rot);
+        drawCrepe(-d.w / 2, -BLOCK_H / 2, d.w, d.seed, false);
+        ctx.restore();
+      }
+
+      ctx.textAlign = 'center';
+      ctx.font = '700 20px "Avenir Next", "Segoe UI", sans-serif';
+      for (const p of popups) {
+        ctx.fillStyle = `rgba(43, 43, 43, ${p.life})`;
+        ctx.fillText(p.text, p.x, p.y - (1 - p.life) * 30);
+      }
+    }
+
+    function update() {
+      if (current && state === 'playing') {
+        current.x += current.dir * current.speed;
+        // Rebond sur les bords (avec un peu de marge au-delà de l'écran)
+        if (current.dir > 0 && current.x > W - current.w * 0.25) current.dir = -1;
+        if (current.dir < 0 && current.x < -current.w * 0.75) current.dir = 1;
+      }
+
+      cameraY += (cameraTarget - cameraY) * 0.08;
+
+      for (const d of debris) {
+        d.x += d.vx;
+        d.y += d.vy;
+        d.vy += 0.5;
+        d.rot += d.vr;
+      }
+      debris = debris.filter((d) => d.y < H + cameraY + 100);
+
+      for (const p of popups) p.life -= 0.02;
+      popups = popups.filter((p) => p.life > 0);
+    }
+
+    function loop() {
+      update();
+      draw();
+      requestAnimationFrame(loop);
+    }
+
+    // Écran titre : une jolie pile de démo
+    stack = [{ x: (W - W * BASE_W_RATIO) / 2, w: W * BASE_W_RATIO, seed: 0.42, butter: false }];
+    for (let i = 1; i < 4; i++) {
+      const prev = stack[i - 1];
+      stack.push({ x: prev.x + (i % 2 ? 8 : -6), w: prev.w - 10, seed: 0.42 + i * 0.13, butter: i === 3 });
+    }
+
+    loop();
+  </script>
+</body>
+</html>
