@@ -61,6 +61,11 @@ export function PrestigePanel({ state, dispatch }: PrestigePanelProps) {
       {showStore && (
         <div className="prestige-store">
           <h3>Upgrades permanentes</h3>
+          <p className="prestige-passive">
+            Chaque ⭐ gagnée donne +2% de production permanente
+            {state.totalReputationEarned > 0 &&
+              ` — actuellement +${formatNumber(state.totalReputationEarned * 2)}%`}
+          </p>
 
           {boughtPrestigeUpgrades.length > 0 && (
             <div className="prestige-bought">

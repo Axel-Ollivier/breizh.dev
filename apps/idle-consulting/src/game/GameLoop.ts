@@ -9,7 +9,15 @@ import { EVENTS, pickRandomEvent } from './events';
 import { ACHIEVEMENTS } from './achievements';
 import { getGeneratorCost } from './formulas';
 import { getReputationGained } from './prestige';
-import { EVENT_MIN_INTERVAL, EVENT_MAX_INTERVAL } from '../utils/constants';
+import {
+  EVENT_MIN_INTERVAL,
+  EVENT_MAX_INTERVAL,
+  OFFLINE_RATE,
+  OFFLINE_CAP_MS,
+  OFFLINE_MIN_MS,
+  REPUTATION_PASSIVE_BONUS,
+  GLOBAL_MULT_SOFT_CAP,
+} from '../utils/constants';
 
 // Calcule le multiplicateur global de production
 function computeGlobalMultiplier(state: GameState): number {
@@ -27,13 +35,20 @@ function computeGlobalMultiplier(state: GameState): number {
     if (upg?.globalMultiplier) mult *= upg.globalMultiplier;
   }
 
-  // BM, DA, PDG
+  // BM, DA, PDG — rendement dégressif au-delà du soft cap, sinon les unités
+  // générées automatiquement font exploser la fin de run
   for (const gen of GENERATORS) {
     if (gen.globalMultPerUnit) {
       const total = (state.generators[gen.id]?.bought ?? 0) + (state.generators[gen.id]?.generated ?? 0);
-      mult *= 1 + total * gen.globalMultPerUnit;
+      const effective = total <= GLOBAL_MULT_SOFT_CAP
+        ? total
+        : GLOBAL_MULT_SOFT_CAP + Math.sqrt(total - GLOBAL_MULT_SOFT_CAP) * 5;
+      mult *= 1 + effective * gen.globalMultPerUnit;
     }
   }
+
+  // Bonus passif de réputation : +2% par ⭐ gagnée (dépensée ou non)
+  mult *= 1 + state.totalReputationEarned * REPUTATION_PASSIVE_BONUS;
 
   // Achievements : +1% par achievement
   mult *= 1 + state.unlockedAchievements.length * 0.01;
@@ -92,6 +107,13 @@ function computeClickValue(state: GameState): number {
   for (const uid of state.purchasedUpgrades) {
     const upg = ALL_UPGRADES.find(u => u.id === uid);
     if (upg?.clickMultiplier) value *= upg.clickMultiplier;
+  }
+
+  // Guru du Personal Branding : le clic rapporte en plus X% du €/s,
+  // pour que cliquer reste pertinent quand la production explose
+  for (const uid of state.purchasedUpgrades) {
+    const upg = ALL_UPGRADES.find(u => u.id === uid);
+    if (upg?.clickEpsPercent) value += computeEps(state) * upg.clickEpsPercent;
   }
 
   // CSE : +10% par prestige effectué
@@ -187,6 +209,48 @@ function computeStartingProductionBonus(state: GameState): number {
   return 0;
 }
 
+// Gains hors-ligne : 50% du taux, plafonnés à 8h.
+// "Introduction en Bourse" multiplie le gain par min(1 + 1%/minute d'absence, 10).
+export interface OfflineGains {
+  state: GameState;
+  gain: number;
+  seconds: number;
+}
+
+export function applyOfflineGains(state: GameState, now: number): OfflineGains {
+  const elapsed = now - state.lastTickAt;
+  if (elapsed < OFFLINE_MIN_MS) {
+    return { state, gain: 0, seconds: 0 };
+  }
+
+  const cappedMs = Math.min(elapsed, OFFLINE_CAP_MS);
+  const seconds = cappedMs / 1000;
+
+  let afkMult = 1;
+  if (state.purchasedPrestigeUpgrades.some(
+    uid => PRESTIGE_UPGRADES.find(u => u.id === uid)?.afkMultiplier,
+  )) {
+    afkMult = Math.min(1 + 0.01 * (cappedMs / 60_000), 10);
+  }
+
+  const gain = computeEps(state) * seconds * OFFLINE_RATE * afkMult;
+
+  const newState: GameState = {
+    ...state,
+    euros: state.euros + gain,
+    totalEurosThisRun: state.totalEurosThisRun + gain,
+    totalEurosAllTime: state.totalEurosAllTime + gain,
+    lastTickAt: now,
+    // Pas d'événement instantané au retour
+    nextEventAt: Math.max(state.nextEventAt, now + EVENT_MIN_INTERVAL),
+    pendingEvent: null,
+    pendingEventExpiresAt: 0,
+    activeEvents: state.activeEvents.filter(ae => ae.expiresAt > now),
+  };
+
+  return { state: newState, gain, seconds };
+}
+
 export function gameReducer(state: GameState, action: GameAction): GameState {
   switch (action.type) {
     case 'CLICK': {
@@ -274,6 +338,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       const newState: GameState = {
         ...fresh,
         reputation: state.reputation + repGained,
+        totalReputationEarned: state.totalReputationEarned + repGained,
         totalPrestiges: state.totalPrestiges + 1,
         purchasedPrestigeUpgrades: [...state.purchasedPrestigeUpgrades],
         unlockedAchievements: [...state.unlockedAchievements],
@@ -290,6 +355,12 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 
       // Applique les générateurs de départ (Programme Graduate, etc.)
       return applyStartingGenerators(newState);
+    }
+
+    case 'APPLY_OFFLINE': {
+      // Rattrapage silencieux quand l'onglet est resté longtemps en arrière-plan
+      // (requestAnimationFrame suspendu → le TICK ne couvre pas la période)
+      return applyOfflineGains(state, action.now).state;
     }
 
     case 'TICK': {
@@ -417,7 +488,7 @@ function applyEvent(state: GameState, eventId: string, now: number): GameState {
   const event = EVENTS.find(e => e.id === eventId);
   if (!event) return state;
 
-  let newState = { ...state };
+  const newState = { ...state };
 
   // Événement instantané : gain d'€
   if (event.instantGainPercent) {
@@ -431,12 +502,16 @@ function applyEvent(state: GameState, eventId: string, now: number): GameState {
   if (event.loseGeneratorPercent) {
     newState.resignationCount = (newState.resignationCount || 0) + 1;
     const generators = { ...newState.generators };
-    // Trouve le tier le plus élevé avec des générateurs
+    // Trouve le tier le plus élevé avec au moins 2 générateurs achetés :
+    // on ne retire jamais le dernier exemplaire d'un tier
     for (let tier = 10; tier >= 1; tier--) {
       const gs = generators[tier];
-      if (gs && gs.bought > 0) {
-        const loss = Math.max(1, Math.floor(gs.bought * event.loseGeneratorPercent.percent));
-        generators[tier] = { ...gs, bought: Math.max(0, gs.bought - loss) };
+      if (gs && gs.bought > 1) {
+        const loss = Math.min(
+          Math.max(1, Math.floor(gs.bought * event.loseGeneratorPercent.percent)),
+          gs.bought - 1,
+        );
+        generators[tier] = { ...gs, bought: gs.bought - loss };
         break;
       }
     }

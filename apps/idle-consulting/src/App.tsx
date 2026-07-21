@@ -1,7 +1,7 @@
 // App principal — layout 3 colonnes
 
-import { useReducer } from 'react';
-import { gameReducer } from './game/GameLoop';
+import { useReducer, useState } from 'react';
+import { gameReducer, applyOfflineGains } from './game/GameLoop';
 import { createInitialState, applyStartingGenerators } from './game/GameState';
 import { loadGame, deleteSave } from './game/save';
 import { useGameLoop } from './hooks/useGameLoop';
@@ -13,17 +13,29 @@ import { UpgradeStore } from './components/UpgradeStore';
 import { PrestigePanel } from './components/PrestigePanel';
 import { EventPopup } from './components/EventPopup';
 import { AchievementList } from './components/AchievementList';
+import { OfflinePopup } from './components/OfflinePopup';
 import './App.css';
 
-function getInitialState() {
+interface InitResult {
+  state: ReturnType<typeof createInitialState>;
+  offline: { gain: number; seconds: number } | null;
+}
+
+function getInitialState(): InitResult {
   const saved = loadGame();
-  if (saved) return saved;
+  if (saved) {
+    // Gains hors-ligne depuis la dernière sauvegarde
+    const { state, gain, seconds } = applyOfflineGains(saved, Date.now());
+    return { state, offline: gain > 0 ? { gain, seconds } : null };
+  }
   const initial = createInitialState();
-  return applyStartingGenerators(initial);
+  return { state: applyStartingGenerators(initial), offline: null };
 }
 
 function App() {
-  const [state, dispatch] = useReducer(gameReducer, null, getInitialState);
+  const [init] = useState(getInitialState);
+  const [state, dispatch] = useReducer(gameReducer, init.state);
+  const [offlineInfo, setOfflineInfo] = useState(init.offline);
 
   // Game loop
   useGameLoop(dispatch);
@@ -60,6 +72,13 @@ function App() {
 
       <AchievementList state={state} />
       <EventPopup state={state} dispatch={dispatch} />
+      {offlineInfo && (
+        <OfflinePopup
+          gain={offlineInfo.gain}
+          seconds={offlineInfo.seconds}
+          onClose={() => setOfflineInfo(null)}
+        />
+      )}
 
       <button className="reset-button" onClick={handleReset} title="Reset la sauvegarde">
         🗑️

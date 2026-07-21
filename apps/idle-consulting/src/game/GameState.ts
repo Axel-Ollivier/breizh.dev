@@ -19,6 +19,7 @@ export interface GameState {
   // Monnaies
   euros: number;
   reputation: number;
+  totalReputationEarned: number; // ⭐ gagnées all-time (bonus passif +2%/⭐)
 
   // Statistiques de la run en cours
   totalEurosThisRun: number;
@@ -64,6 +65,7 @@ export function createInitialState(): GameState {
   return {
     euros: 0,
     reputation: 0,
+    totalReputationEarned: 0,
     totalEurosThisRun: 0,
     totalClicks: 0,
     clicksThisRun: 0,
@@ -111,6 +113,7 @@ export type GameAction =
   | { type: 'BUY_PRESTIGE_UPGRADE'; upgradeId: string }
   | { type: 'PRESTIGE' }
   | { type: 'TICK'; deltaMs: number; now: number }
+  | { type: 'APPLY_OFFLINE'; now: number }
   | { type: 'CLICK_EVENT' }
   | { type: 'DISMISS_EVENT' }
   | { type: 'LOAD_SAVE'; state: GameState };

@@ -94,16 +94,16 @@ export const GENERATORS: GeneratorDef[] = [
   },
 ];
 
-// Noms des upgrades par tier (4 upgrades par tier, débloquées à 10/25/50/100)
+// Noms des upgrades par tier (6 upgrades par tier, débloquées à 10/25/50/100/200/400)
 export const TIER_UPGRADE_NAMES: Record<number, string[]> = {
-  1: ['Écran supplémentaire', 'Accès au VPN', 'Formation Excel Avancé', 'Convention de stage illimitée'],
-  2: ['Chaise ergonomique', 'Double écran', 'Carte Navigo remboursée', 'Prime de mission'],
-  3: ['Certification Scrum', 'Télétravail 2j/semaine', 'MacBook Pro', 'Forfait consultant premium'],
-  4: ['Accès LinkedIn premium', 'Base de CV centralisée', 'Bot de sourcing', 'IA de matching'],
-  5: ['CRM Salesforce', 'Carte de visite dorée', 'Bureau fermé', 'Voiture de fonction'],
-  6: ['Déjeuner client illimité', 'Carte Amex Gold', 'Assistant personnel', 'Club affaires'],
-  7: ['Logiciel SIRH', 'Team building budget', 'Programme bien-être', 'Marque employeur premium'],
-  8: ['Chauffeur privé', 'Bureau panoramique', 'Carte noire', 'Jet privé régional'],
-  9: ['Réseau alumni', 'Conférence TED', 'Carnet d\'adresses ministériel', 'Accord-cadre exclusif'],
-  10: ['Conseil d\'administration', 'Golden parachute', 'Yacht de motivation', 'Clone quantique'],
+  1: ['Écran supplémentaire', 'Accès au VPN', 'Formation Excel Avancé', 'Convention de stage illimitée', 'Amphi de pré-embauche', 'Partenariat toutes écoles de commerce'],
+  2: ['Chaise ergonomique', 'Double écran', 'Carte Navigo remboursée', 'Prime de mission', 'Badge "3 ans d\'XP" automatique', 'Uniforme costume-baskets'],
+  3: ['Certification Scrum', 'Télétravail 2j/semaine', 'MacBook Pro', 'Forfait consultant premium', 'Titre de Principal Consultant', 'Détachement chez le client à vie'],
+  4: ['Accès LinkedIn premium', 'Base de CV centralisée', 'Bot de sourcing', 'IA de matching', 'Scraping massif de CVthèques', 'Jumeau numérique de recruteur'],
+  5: ['CRM Salesforce', 'Carte de visite dorée', 'Bureau fermé', 'Voiture de fonction', 'Pipeline Excel prévisionnel', 'École interne de Business Managers'],
+  6: ['Déjeuner client illimité', 'Carte Amex Gold', 'Assistant personnel', 'Club affaires', 'Loge VIP au Stade de France', 'Séminaire à Dubaï'],
+  7: ['Logiciel SIRH', 'Team building budget', 'Programme bien-être', 'Marque employeur premium', 'Chief Happiness Officer en chef', 'Open badges bien-être'],
+  8: ['Chauffeur privé', 'Bureau panoramique', 'Carte noire', 'Jet privé régional', 'Fusion-acquisition régionale', 'Agence sur la Lune'],
+  9: ['Réseau alumni', 'Conférence TED', 'Carnet d\'adresses ministériel', 'Accord-cadre exclusif', 'Dîner annuel du MEDEF', 'Lobby au Parlement européen'],
+  10: ['Conseil d\'administration', 'Golden parachute', 'Yacht de motivation', 'Clone quantique', 'Conseil des sages clonés', 'Singularité managériale'],
 };

@@ -9,6 +9,8 @@ export interface UpgradeDef {
   type: 'click' | 'tier' | 'global';
   // Pour les upgrades de clic : multiplicateur du TJM
   clickMultiplier?: number;
+  // Pour les upgrades de clic : le clic rapporte en plus X% du €/s
+  clickEpsPercent?: number;
   // Pour les upgrades de tier : tier concerné et multiplicateur
   tierTarget?: number;
   tierMultiplier?: number;
@@ -69,6 +71,15 @@ export const CLICK_UPGRADES: UpgradeDef[] = [
     type: 'click',
     clickMultiplier: 10,
     condition: { type: 'clicks', count: 25_000 },
+  },
+  {
+    id: 'click-6',
+    name: 'Guru du Personal Branding',
+    cost: 10_000_000,
+    description: 'Chaque clic rapporte en plus 1% du €/s',
+    type: 'click',
+    clickEpsPercent: 0.01,
+    condition: { type: 'eps', amount: 1_000_000 },
   },
 ];
 

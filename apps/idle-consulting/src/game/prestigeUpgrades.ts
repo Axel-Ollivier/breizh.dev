@@ -139,7 +139,7 @@ export const PRESTIGE_UPGRADES: PrestigeUpgradeDef[] = [
     id: 'prestige-bourse',
     name: 'Introduction en Bourse',
     cost: 500,
-    description: '+1% production/minute AFK (cap ×10)',
+    description: 'Gains hors-ligne : +1% par minute d\'absence (cap ×10)',
     requiredPrestiges: 10,
     afkMultiplier: true,
   },
