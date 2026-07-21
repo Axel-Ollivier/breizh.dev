@@ -7,7 +7,13 @@ const SUFFIXES = [
 
 export function formatNumber(n: number): string {
   if (n < 0) return '-' + formatNumber(-n);
-  if (n < 1000) return Math.floor(n).toString();
+  if (n < 1000) {
+    // Garde les décimales des petites valeurs (0.1 €/s du Stagiaire),
+    // sinon elles s'affichent "0"
+    if (Number.isInteger(n) || n >= 100) return Math.floor(n).toString();
+    if (n < 10) return (Math.floor(n * 100) / 100).toString();
+    return (Math.floor(n * 10) / 10).toString();
+  }
 
   let tier = 0;
   let scaled = n;
