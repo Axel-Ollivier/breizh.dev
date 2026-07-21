@@ -14,7 +14,8 @@ export function EventPopup({ state, dispatch }: EventPopupProps) {
   const event = EVENTS.find(e => e.id === state.pendingEvent);
   if (!event) return null;
 
-  const timeLeft = Math.max(0, Math.ceil((state.pendingEventExpiresAt - Date.now()) / 1000));
+  // lastTickAt est mis à jour à chaque tick (~60fps), ce qui garde le rendu pur
+  const timeLeft = Math.max(0, Math.ceil((state.pendingEventExpiresAt - state.lastTickAt) / 1000));
 
   return (
     <div
