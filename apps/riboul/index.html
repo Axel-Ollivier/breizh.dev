@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Riboul — Le jeu d'apéro breton</title>
+  <meta name="description" content="Un jeu d'apéro façon Picolo : ajoutez les prénoms, passez le téléphone, suivez les cartes. Signé breizh.dev.">
+  <meta name="theme-color" content="#1a1030">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍻</text></svg>">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      font-family: "Avenir Next", Avenir, "Segoe UI", Helvetica, Arial, sans-serif;
+      background: #1a1030;
+      color: #f5f1ff;
+      touch-action: manipulation;
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background: radial-gradient(circle at 20% 10%, #2c1b52 0%, #1a1030 55%, #120a22 100%);
+    }
+
+    .screen {
+      position: fixed;
+      inset: 0;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      padding: max(1.25rem, env(safe-area-inset-top)) 1.25rem max(1.25rem, env(safe-area-inset-bottom));
+      overflow-y: auto;
+    }
+    .screen.visible { display: flex; }
+
+    /* ---------- Accueil ---------- */
+    #home { justify-content: center; gap: 1.1rem; text-align: center; }
+
+    #home h1 {
+      font-size: clamp(2.6rem, 12vw, 4rem);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      background: linear-gradient(120deg, #ffd166, #ff6b9d 55%, #b388ff);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    #home .tagline {
+      color: #b9aed6;
+      font-size: 1rem;
+      max-width: 26rem;
+      line-height: 1.5;
+    }
+
+    #players {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.5rem;
+      max-width: 26rem;
+      min-height: 2.4rem;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 999px;
+      padding: 0.4rem 0.9rem;
+      font-size: 0.95rem;
+    }
+
+    .chip button {
+      background: none;
+      border: none;
+      color: #ff8fb3;
+      font-size: 1rem;
+      cursor: pointer;
+      line-height: 1;
+      padding: 0.1rem;
+    }
+
+    #addForm { display: flex; gap: 0.5rem; width: 100%; max-width: 22rem; }
+
+    #nameInput {
+      flex: 1;
+      min-width: 0;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 0.75rem;
+      padding: 0.75rem 1rem;
+      color: #f5f1ff;
+      font-size: 1rem;
+      outline: none;
+    }
+    #nameInput::placeholder { color: #8c7fae; }
+    #nameInput:focus { border-color: #ffd166; }
+
+    .btn {
+      border: none;
+      border-radius: 0.75rem;
+      padding: 0.75rem 1.4rem;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.1s ease, opacity 0.15s ease;
+    }
+    .btn:active { transform: scale(0.96); }
+
+    .btn-ghost {
+      background: rgba(255, 255, 255, 0.1);
+      color: #f5f1ff;
+    }
+
+    .btn-primary {
+      background: linear-gradient(120deg, #ffd166, #ff6b9d);
+      color: #2a1020;
+      font-size: 1.15rem;
+      padding: 0.9rem 2.6rem;
+      border-radius: 999px;
+      box-shadow: 0 10px 30px rgba(255, 107, 157, 0.35);
+    }
+    .btn-primary:disabled { opacity: 0.35; cursor: default; box-shadow: none; }
+
+    .disclaimer {
+      font-size: 0.75rem;
+      color: #7a6f99;
+      max-width: 24rem;
+      line-height: 1.45;
+    }
+
+    /* ---------- Jeu ---------- */
+    #game { justify-content: space-between; cursor: pointer; }
+
+    #gameHeader {
+      width: 100%;
+      max-width: 30rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: #b9aed6;
+      font-size: 0.9rem;
+    }
+
+    #quitBtn {
+      background: none;
+      border: none;
+      color: #b9aed6;
+      font-size: 0.9rem;
+      cursor: pointer;
+      padding: 0.4rem;
+    }
+
+    #card {
+      width: 100%;
+      max-width: 30rem;
+      margin: auto 0;
+      border-radius: 1.5rem;
+      padding: 2rem 1.6rem 2.4rem;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.2rem;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+      animation: pop 0.28s cubic-bezier(0.34, 1.4, 0.64, 1);
+    }
+
+    @keyframes pop {
+      from { opacity: 0; transform: translateY(18px) scale(0.96); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .cat-pill {
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      border-radius: 999px;
+      padding: 0.4rem 1.1rem;
+      color: #1c1030;
+    }
+
+    #cardText {
+      font-size: clamp(1.25rem, 5.4vw, 1.7rem);
+      line-height: 1.45;
+      font-weight: 600;
+    }
+
+    #tapHint {
+      color: #8c7fae;
+      font-size: 0.85rem;
+      padding-bottom: 0.5rem;
+    }
+
+    /* ---------- Fin ---------- */
+    #end { justify-content: center; gap: 1.4rem; text-align: center; }
+    #end h2 { font-size: clamp(2rem, 9vw, 3rem); }
+    #end p { color: #b9aed6; max-width: 24rem; line-height: 1.5; }
+    #end .actions { display: flex; flex-direction: column; gap: 0.75rem; }
+  </style>
+</head>
+<body>
+
+  <!-- Accueil -->
+  <section id="home" class="screen visible">
+    <h1>Riboul</h1>
+    <p class="tagline">Le jeu d'apéro façon Picolo, sauce bretonne. Ajoutez les prénoms, lancez la partie et passez le téléphone : chaque carte annonce un défi, une question, un vote… ou un virus. 🍻</p>
+    <div id="players"></div>
+    <form id="addForm" autocomplete="off">
+      <input id="nameInput" type="text" placeholder="Prénom" maxlength="20" enterkeyhint="done">
+      <button type="submit" class="btn btn-ghost">Ajouter</button>
+    </form>
+    <button id="startBtn" class="btn btn-primary" disabled>C'est parti !</button>
+    <p class="disclaimer">Il faut au moins 2 joueurs. L'abus d'alcool est dangereux pour la santé — buvez avec modération, et rien n'interdit de jouer au jus de pomme. Interdit aux mineurs.</p>
+  </section>
+
+  <!-- Jeu -->
+  <section id="game" class="screen">
+    <div id="gameHeader">
+      <span id="progress"></span>
+      <button id="quitBtn" type="button">✕ Quitter</button>
+    </div>
+    <div id="card">
+      <span id="catPill" class="cat-pill"></span>
+      <p id="cardText"></p>
+    </div>
+    <p id="tapHint">Touche l'écran pour la carte suivante</p>
+  </section>
+
+  <!-- Fin -->
+  <section id="end" class="screen">
+    <h2>Echu eo ! 🎉</h2>
+    <p>La partie est terminée. Un dernier verre… d'eau, et on remet ça ?</p>
+    <div class="actions">
+      <button id="replayBtn" class="btn btn-primary">Rejouer</button>
+      <button id="changePlayersBtn" class="btn btn-ghost">Changer les joueurs</button>
+    </div>
+  </section>
+
+  <script>
+    "use strict";
+
+    /* ------------------------------------------------------------------ */
+    /* Contenu des cartes                                                 */
+    /* {p1} et {p2} sont remplacés par deux joueurs distincts au tirage.  */
+    /* ------------------------------------------------------------------ */
+
+    const CATEGORIES = {
+      tous:     { label: "Tous ensemble", color: "#ffd166" },
+      apero:    { label: "Apéro",         color: "#7ce0a3" },
+      defi:     { label: "Défi",          color: "#ff8fb3" },
+      question: { label: "Question",      color: "#8ecbff" },
+      vote:     { label: "Vote",          color: "#c9a7ff" },
+      jeu:      { label: "Jeu",           color: "#ffb37c" },
+      virus:    { label: "Virus",         color: "#7cf0e6" },
+      antidote: { label: "Fin du virus",  color: "#7cf0e6" },
+    };
+
+    const PROMPTS = {
+      tous: [
+        "Yec'hed mat ! Tout le monde lève son verre et boit 1 gorgée. 🍻",
+        "Dernière personne à poser sa main sur sa tête : 3 gorgées.",
+        "Les célibataires boivent 2 gorgées. Les autres trinquent.",
+        "Celles et ceux qui ont déjà mis les pieds en Bretagne boivent 1 gorgée. Les autres en boivent 2, ça leur apprendra.",
+        "Quiconque a son téléphone à moins de 30 cm boit 2 gorgées.",
+        "Les personnes qui portent du noir boivent 2 gorgées.",
+        "La personne la plus jeune de la pièce boit 2 gorgées.",
+        "La personne la plus âgée distribue 3 gorgées.",
+        "Celles et ceux qui ont déjà dansé sur du Matmatah boivent 1 gorgée.",
+        "Tout le monde pointe le plafond. Le dernier boit 2 gorgées.",
+        "Quiconque est déjà arrivé en retard à son propre anniversaire boit 2 gorgées.",
+        "Les personnes en chaussettes boivent 1 gorgée.",
+        "Celles et ceux qui ont un fond d'écran avec un animal boivent 2 gorgées.",
+        "Tour de table : chacun dit « je n'ai jamais… ». Ceux qui l'ont fait boivent 1 gorgée.",
+        "Quiconque a déjà chanté sous la douche aujourd'hui même boit 2 gorgées. On vous croit sur parole.",
+      ],
+      apero: [
+        "{p1}, bois 2 gorgées. C'est comme ça.",
+        "{p1}, distribue 3 gorgées à qui tu veux.",
+        "{p1}, bois autant de gorgées que de lettres dans ton prénom.",
+        "{p1} et {p2}, trinquez et buvez 2 gorgées ensemble.",
+        "{p1} et {p2}, shifumi ! Le perdant boit 3 gorgées.",
+        "{p1}, choisis : tu bois 2 gorgées maintenant, ou 4 gorgées à la prochaine carte « Apéro ».",
+        "{p1}, ton voisin de droite boit 2 gorgées. Il peut te remercier.",
+        "{p1}, distribue 1 gorgée par personne que tu as déjà appelée « chef » ou « champion » dans ta vie. Sois honnête.",
+        "{p1}, cul sec ou 5 pompes. À toi de voir.",
+        "{p1} et {p2}, bras de fer (ou duel de regards, 20 secondes). Le perdant boit 3 gorgées.",
+        "{p1}, offre 2 gorgées à la personne la mieux habillée de la pièce.",
+        "{p1}, bois 1 gorgée par personne qui porte le même type de haut que toi.",
+      ],
+      defi: [
+        "{p1}, imite un animal choisi par le groupe jusqu'à ce que quelqu'un devine. Personne ne trouve ? 3 gorgées.",
+        "{p1}, fais 10 pompes ou bois 3 gorgées.",
+        "{p1}, danse 30 secondes sans musique ou bois 3 gorgées.",
+        "{p1}, montre la dernière photo de ta galerie ou bois 4 gorgées.",
+        "{p1}, fais deviner un film uniquement en mimant. Si personne ne trouve en 1 minute, tout le monde boit 1 gorgée.",
+        "{p1}, raconte ta pire honte en soirée ou bois 4 gorgées.",
+        "{p1}, parle avec un accent (au choix du groupe) pendant les 3 prochaines cartes, ou bois 3 gorgées.",
+        "{p1}, tiens en équilibre sur une jambe jusqu'à la prochaine carte, ou bois 2 gorgées.",
+        "{p1}, chante le refrain d'une chanson choisie par {p2}, ou bois 3 gorgées.",
+        "{p1}, complimente sincèrement chaque personne de la pièce, ou bois 3 gorgées.",
+        "{p1}, laisse {p2} publier ce qu'il veut… non, on plaisante. Fais-lui juste ton meilleur compliment, ou buvez 2 gorgées chacun.",
+        "{p1}, imite {p2} jusqu'à ce que le groupe valide. Refus ? 3 gorgées.",
+      ],
+      question: [
+        "{p1}, cite 5 marques de bière en 15 secondes, ou bois 2 gorgées.",
+        "{p1}, quelle est la capitale de l'Australie ? Mauvaise réponse : 2 gorgées. (Indice : ce n'est pas Sydney.)",
+        "{p1}, combien de départements compte la Bretagne administrative ? Mauvaise réponse : 2 gorgées.",
+        "{p1}, dis « krampouezh » trois fois très vite sans te tromper, ou bois 2 gorgées.",
+        "{p1}, cite 4 villes bretonnes en 10 secondes, ou bois 2 gorgées.",
+        "{p1}, que veut dire « yec'hed mat » ? Mauvaise réponse : 2 gorgées.",
+        "{p1}, cite 3 crêperies ou plats bretons en 10 secondes, ou bois 2 gorgées.",
+        "{p1}, épelle « anticonstitutionnellement » à l'envers… ou plus raisonnablement « Bretagne ». Erreur : 2 gorgées.",
+        "{p1}, cite 5 pays dont le drapeau contient du rouge, en 15 secondes. Sinon 2 gorgées.",
+        "{p1}, quel est le prénom de la mère de {p2} ? Mauvaise réponse : 2 gorgées. Bonne réponse : {p2} boit.",
+        "{p1}, cite 3 chansons qui parlent d'alcool, en 20 secondes. Sinon 2 gorgées.",
+        "{p1}, combien y a-t-il de communes en France, à 5 000 près ? Le groupe tranche. Perdu : 3 gorgées.",
+      ],
+      vote: [
+        "À 3, tout le monde pointe la personne la plus susceptible de s'endormir en premier ce soir. La plus pointée boit 2 gorgées.",
+        "À 3, pointez la personne la plus dramatique. Elle boit 3 gorgées, en le prenant très mal évidemment.",
+        "À 3, pointez la personne qui cuisine le mieux. Elle distribue 3 gorgées.",
+        "À 3, pointez la personne la plus susceptible de devenir célèbre. Elle distribue 2 gorgées.",
+        "À 3, pointez la personne qui répond le plus lentement aux messages. Elle boit 2 gorgées.",
+        "À 3, pointez la personne la plus mauvaise perdante. Elle boit 2 gorgées.",
+        "À 3, pointez la personne qui tiendrait le moins longtemps sans son téléphone. Elle boit 2 gorgées.",
+        "À 3, pointez la personne la plus radine. Elle paie sa tournée… ou boit 3 gorgées.",
+        "À 3, pointez le meilleur danseur. Il fait une démo ou boit 2 gorgées.",
+      ],
+      jeu: [
+        "Dans le sens des aiguilles d'une montre, citez chacun une marque de voiture. Le premier qui sèche ou répète boit 3 gorgées. {p1} commence.",
+        "« Dans ma valise il y a… » : chacun répète la liste et ajoute un objet. Le premier qui se trompe boit 3 gorgées. {p1} commence.",
+        "Comptez à tour de rôle de 1 à 21, mais remplacez les multiples de 3 par « prout ». Toute erreur : 2 gorgées. {p1} commence.",
+        "Battle de rimes : {p1} dit un mot, puis chacun doit trouver une rime à tour de rôle. Le premier qui sèche boit 2 gorgées.",
+        "Citez à tour de rôle des prénoms commençant par la lettre du prénom de {p1}. Le premier qui sèche boit 2 gorgées.",
+        "Ni oui ni non pendant 2 minutes : tout le monde peut interroger tout le monde. Chaque « oui » ou « non » lâché = 1 gorgée.",
+        "Concours de grimaces arbitré par {p1}. Le vainqueur distribue 2 gorgées, {p1} ne participe pas mais boit 1 gorgée pour la peine.",
+        "Chacun son tour, citez un animal marin. Le premier qui sèche boit 2 gorgées. {p1} commence.",
+        "Le mot interdit jusqu'à la prochaine carte « Jeu » : « alors ». 1 gorgée par oubli, tout le monde surveille tout le monde.",
+      ],
+      virus: [
+        {
+          start: "☣️ VIRUS — {p1}, jusqu'à nouvel ordre tu dois lever la main avant de parler. Chaque oubli : 1 gorgée.",
+          end: "💊 ANTIDOTE — {p1}, tu peux reparler librement. C'était pour ton bien.",
+        },
+        {
+          start: "☣️ VIRUS — {p1} et {p2}, vous êtes jumeaux : quand l'un boit, l'autre boit aussi. Jusqu'à nouvel ordre.",
+          end: "💊 ANTIDOTE — {p1} et {p2}, la gémellité est rompue. Chacun reboit pour soi.",
+        },
+        {
+          start: "☣️ VIRUS — {p1}, interdiction de dire « oui » et « non » jusqu'à nouvel ordre. 1 gorgée par oubli.",
+          end: "💊 ANTIDOTE — {p1}, tu peux redire « oui » et « non ». Oui oui, vraiment.",
+        },
+        {
+          start: "☣️ VIRUS — Jusqu'à nouvel ordre, interdiction de prononcer les prénoms. 1 gorgée par oubli, pour tout le monde.",
+          end: "💊 ANTIDOTE — Les prénoms sont de nouveau autorisés. Retrouvailles émouvantes.",
+        },
+        {
+          start: "☣️ VIRUS — {p1}, garde ton verre dans ta main la moins habile jusqu'à nouvel ordre. Mauvaise main : 1 gorgée.",
+          end: "💊 ANTIDOTE — {p1}, ta bonne main retrouve son verre. La motricité, c'est important.",
+        },
+        {
+          start: "☣️ VIRUS — {p1}, appelle tout le monde « champion » ou « championne » jusqu'à nouvel ordre. Oubli : 1 gorgée.",
+          end: "💊 ANTIDOTE — {p1}, fini les champions. Tu peux redevenir toi-même.",
+        },
+        {
+          start: "☣️ VIRUS — Interdiction de poser son verre sur la table jusqu'à nouvel ordre. Verre posé : 2 gorgées.",
+          end: "💊 ANTIDOTE — Vous pouvez reposer vos verres. Vos bras vous remercient.",
+        },
+      ],
+    };
+
+    /* Poids de tirage par catégorie (hors virus, gérés à part). */
+    const WEIGHTS = { tous: 3, apero: 4, defi: 3, question: 3, vote: 2, jeu: 2 };
+
+    /* ------------------------------------------------------------------ */
+    /* État                                                                */
+    /* ------------------------------------------------------------------ */
+
+    const STORAGE_KEY = "riboul.players";
+    let players = [];
+    let deck = [];
+    let index = 0;
+
+    try {
+      players = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+      if (!Array.isArray(players)) players = [];
+    } catch { players = []; }
+
+    /* ------------------------------------------------------------------ */
+    /* Utilitaires                                                         */
+    /* ------------------------------------------------------------------ */
+
+    const rand = (n) => Math.floor(Math.random() * n);
+
+    function shuffle(arr) {
+      const a = arr.slice();
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = rand(i + 1);
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    function pickWeightedCategory() {
+      const entries = Object.entries(WEIGHTS);
+      const total = entries.reduce((s, [, w]) => s + w, 0);
+      let r = Math.random() * total;
+      for (const [cat, w] of entries) {
+        r -= w;
+        if (r < 0) return cat;
+      }
+      return entries[0][0];
+    }
+
+    /* Remplit {p1}/{p2} avec deux joueurs distincts, renvoie [texte, noms]. */
+    function fillPlayers(text, fixed) {
+      const names = fixed || shuffle(players).slice(0, 2);
+      return [
+        text.replaceAll("{p1}", names[0]).replaceAll("{p2}", names[1] || names[0]),
+        names,
+      ];
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Construction du paquet                                              */
+    /* ------------------------------------------------------------------ */
+
+    function buildDeck() {
+      const size = Math.min(45, 30 + players.length * 2);
+      const pools = {};
+      for (const cat of Object.keys(WEIGHTS)) pools[cat] = shuffle(PROMPTS[cat]);
+
+      const cards = [];
+      while (cards.length < size) {
+        const cat = pickWeightedCategory();
+        if (pools[cat].length === 0) pools[cat] = shuffle(PROMPTS[cat]);
+        const [text] = fillPlayers(pools[cat].pop());
+        cards.push({ cat, text });
+      }
+
+      /* Virus : 2 à 4 paires selon la taille du paquet, l'antidote arrive 4 à 9 cartes plus tard. */
+      const virusCount = Math.min(2 + rand(3), Math.floor(size / 12));
+      const viruses = shuffle(PROMPTS.virus).slice(0, virusCount);
+      for (const v of viruses) {
+        const startPos = 2 + rand(Math.max(1, cards.length - 12));
+        const [startText, names] = fillPlayers(v.start);
+        const [endText] = fillPlayers(v.end, names);
+        cards.splice(startPos, 0, { cat: "virus", text: startText });
+        const endPos = Math.min(startPos + 4 + rand(6), cards.length);
+        cards.splice(endPos, 0, { cat: "antidote", text: endText });
+      }
+
+      return cards;
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* UI                                                                  */
+    /* ------------------------------------------------------------------ */
+
+    const $ = (id) => document.getElementById(id);
+    const screens = { home: $("home"), game: $("game"), end: $("end") };
+
+    function show(name) {
+      for (const [key, el] of Object.entries(screens)) {
+        el.classList.toggle("visible", key === name);
+      }
+    }
+
+    function renderPlayers() {
+      const box = $("players");
+      box.innerHTML = "";
+      players.forEach((name, i) => {
+        const chip = document.createElement("span");
+        chip.className = "chip";
+        chip.textContent = name;
+        const del = document.createElement("button");
+        del.type = "button";
+        del.textContent = "✕";
+        del.setAttribute("aria-label", "Retirer " + name);
+        del.addEventListener("click", () => {
+          players.splice(i, 1);
+          persistPlayers();
+          renderPlayers();
+        });
+        chip.appendChild(del);
+        box.appendChild(chip);
+      });
+      $("startBtn").disabled = players.length < 2;
+    }
+
+    function persistPlayers() {
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(players)); } catch {}
+    }
+
+    function renderCard() {
+      const card = deck[index];
+      const meta = CATEGORIES[card.cat];
+      const pill = $("catPill");
+      pill.textContent = meta.label;
+      pill.style.background = meta.color;
+      $("cardText").textContent = card.text;
+      $("progress").textContent = (index + 1) + " / " + deck.length;
+
+      const cardEl = $("card");
+      cardEl.style.animation = "none";
+      void cardEl.offsetWidth; /* force reflow pour relancer l'animation */
+      cardEl.style.animation = "";
+    }
+
+    function startGame() {
+      deck = buildDeck();
+      index = 0;
+      renderCard();
+      show("game");
+    }
+
+    function nextCard() {
+      if (index + 1 >= deck.length) {
+        show("end");
+        return;
+      }
+      index++;
+      renderCard();
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Événements                                                          */
+    /* ------------------------------------------------------------------ */
+
+    $("addForm").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const input = $("nameInput");
+      const name = input.value.trim();
+      if (!name) return;
+      if (players.some((p) => p.toLowerCase() === name.toLowerCase())) {
+        input.value = "";
+        return;
+      }
+      players.push(name);
+      persistPlayers();
+      renderPlayers();
+      input.value = "";
+      input.focus();
+    });
+
+    $("startBtn").addEventListener("click", startGame);
+    $("replayBtn").addEventListener("click", startGame);
+    $("changePlayersBtn").addEventListener("click", () => show("home"));
+
+    $("quitBtn").addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (confirm("Quitter la partie en cours ?")) show("home");
+    });
+
+    screens.game.addEventListener("click", nextCard);
+    document.addEventListener("keydown", (e) => {
+      if (screens.game.classList.contains("visible") && (e.key === " " || e.key === "Enter" || e.key === "ArrowRight")) {
+        nextCard();
+      }
+    });
+
+    renderPlayers();
+  </script>
+</body>
+</html>

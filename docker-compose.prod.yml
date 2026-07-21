@@ -35,6 +35,18 @@ services:
       - "traefik.http.routers.krampouezh.tls.certresolver=letsencrypt"
       - "traefik.http.services.krampouezh.loadbalancer.server.port=80"
 
+  riboul:
+    image: ghcr.io/axel-ollivier/riboul:latest
+    restart: unless-stopped
+    networks:
+      - web
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.riboul.rule=Host(`riboul.breizh.dev`)"
+      - "traefik.http.routers.riboul.entrypoints=websecure"
+      - "traefik.http.routers.riboul.tls.certresolver=letsencrypt"
+      - "traefik.http.services.riboul.loadbalancer.server.port=80"
+
   awen:
     image: ghcr.io/axel-ollivier/awen:latest
     restart: unless-stopped
