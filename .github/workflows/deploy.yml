@@ -31,6 +31,9 @@ jobs:
           - name: awen
             context: apps/awen
             dockerfile: apps/awen/Dockerfile
+          - name: riboul
+            context: apps/riboul
+            dockerfile: apps/riboul/Dockerfile
 
     steps:
       - name: Checkout
