@@ -100,9 +100,12 @@ apps/
 ├── awen/                → awen.breizh.dev (séquenceur hardstyle génératif — Vite + React + Tone.js)
 │   ├── src/             → engine (logique pure) / audio (Tone) / ui (React) / state (Zustand)
 │   └── Dockerfile       → build Vite puis nginx statique
-└── riboul/              → riboul.breizh.dev (jeu d'apéro façon Picolo, page statique)
-    ├── index.html
-    └── Dockerfile
+├── riboul/              → riboul.breizh.dev (jeu d'apéro façon Picolo, page statique)
+│   ├── index.html
+│   └── Dockerfile
+└── idle-consulting/     → idle.breizh.dev (ESN Idle, jeu incrémental de consulting — Vite + React)
+    ├── src/             → components / game / hooks / utils
+    └── Dockerfile       → build Vite puis nginx statique
 ```
 
 ### Ajouter une nouvelle mini app

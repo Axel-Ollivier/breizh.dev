@@ -59,6 +59,18 @@ services:
       - "traefik.http.routers.awen.tls.certresolver=letsencrypt"
       - "traefik.http.services.awen.loadbalancer.server.port=80"
 
+  idle-consulting:
+    image: ghcr.io/axel-ollivier/idle-consulting:latest
+    restart: unless-stopped
+    networks:
+      - web
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.idle-consulting.rule=Host(`idle.breizh.dev`)"
+      - "traefik.http.routers.idle-consulting.entrypoints=websecure"
+      - "traefik.http.routers.idle-consulting.tls.certresolver=letsencrypt"
+      - "traefik.http.services.idle-consulting.loadbalancer.server.port=80"
+
 networks:
   web:
     external: true
