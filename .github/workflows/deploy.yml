@@ -34,6 +34,9 @@ jobs:
           - name: riboul
             context: apps/riboul
             dockerfile: apps/riboul/Dockerfile
+          - name: idle-consulting
+            context: apps/idle-consulting
+            dockerfile: apps/idle-consulting/Dockerfile
 
     steps:
       - name: Checkout
