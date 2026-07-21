@@ -38,10 +38,11 @@
     .screen.visible { display: flex; }
 
     /* ---------- Accueil ---------- */
-    #home { justify-content: center; gap: 1.1rem; text-align: center; }
+    #home { justify-content: flex-start; gap: 1rem; text-align: center; }
 
     #home h1 {
-      font-size: clamp(2.6rem, 12vw, 4rem);
+      margin-top: auto;
+      font-size: clamp(2.4rem, 11vw, 3.6rem);
       letter-spacing: 0.12em;
       text-transform: uppercase;
       background: linear-gradient(120deg, #ffd166, #ff6b9d 55%, #b388ff);
@@ -52,7 +53,7 @@
 
     #home .tagline {
       color: #b9aed6;
-      font-size: 1rem;
+      font-size: 0.95rem;
       max-width: 26rem;
       line-height: 1.5;
     }
@@ -103,6 +104,83 @@
     #nameInput::placeholder { color: #8c7fae; }
     #nameInput:focus { border-color: #ffd166; }
 
+    /* ---------- Réglages ---------- */
+    #settings {
+      width: 100%;
+      max-width: 24rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.8rem;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 1rem;
+      padding: 1rem;
+    }
+
+    .setting-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+    }
+
+    .setting-label {
+      font-size: 0.9rem;
+      color: #d8cfef;
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    .seg {
+      display: flex;
+      gap: 0.25rem;
+      background: rgba(0, 0, 0, 0.25);
+      border-radius: 999px;
+      padding: 0.2rem;
+    }
+
+    .seg button {
+      border: none;
+      background: none;
+      color: #9c8fc0;
+      font-size: 0.82rem;
+      font-weight: 700;
+      padding: 0.4rem 0.75rem;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+
+    .seg button.active {
+      background: linear-gradient(120deg, #ffd166, #ff6b9d);
+      color: #2a1020;
+    }
+
+    .switch {
+      position: relative;
+      width: 2.9rem;
+      height: 1.6rem;
+      border-radius: 999px;
+      border: none;
+      cursor: pointer;
+      background: rgba(0, 0, 0, 0.35);
+      transition: background 0.15s ease;
+      flex-shrink: 0;
+    }
+    .switch::after {
+      content: "";
+      position: absolute;
+      top: 0.18rem;
+      left: 0.2rem;
+      width: 1.25rem;
+      height: 1.25rem;
+      border-radius: 50%;
+      background: #9c8fc0;
+      transition: transform 0.15s ease, background 0.15s ease;
+    }
+    .switch.on { background: linear-gradient(120deg, #ffd166, #ff6b9d); }
+    .switch.on::after { transform: translateX(1.25rem); background: #fff; }
+
     .btn {
       border: none;
       border-radius: 0.75rem;
@@ -130,7 +208,8 @@
     .btn-primary:disabled { opacity: 0.35; cursor: default; box-shadow: none; }
 
     .disclaimer {
-      font-size: 0.75rem;
+      margin-bottom: auto;
+      font-size: 0.72rem;
       color: #7a6f99;
       max-width: 24rem;
       line-height: 1.45;
@@ -214,14 +293,39 @@
   <!-- Accueil -->
   <section id="home" class="screen visible">
     <h1>Riboul</h1>
-    <p class="tagline">Le jeu d'apéro façon Picolo, sauce bretonne. Ajoutez les prénoms, lancez la partie et passez le téléphone : chaque carte annonce un défi, une question, un vote… ou un virus. 🍻</p>
+    <p class="tagline">Le jeu d'apéro façon Picolo, sauce bretonne. Ajoutez les prénoms, réglez l'ambiance et passez le téléphone. 🍻</p>
     <div id="players"></div>
     <form id="addForm" autocomplete="off">
       <input id="nameInput" type="text" placeholder="Prénom" maxlength="20" enterkeyhint="done">
       <button type="submit" class="btn btn-ghost">Ajouter</button>
     </form>
+    <div id="settings">
+      <div class="setting-row">
+        <span class="setting-label">Ambiance</span>
+        <div class="seg" id="modeSeg">
+          <button type="button" data-value="classique">Classique</button>
+          <button type="button" data-value="trash">Trash 🔞</button>
+        </div>
+      </div>
+      <div class="setting-row">
+        <span class="setting-label">Partie</span>
+        <div class="seg" id="lengthSeg">
+          <button type="button" data-value="courte">Courte</button>
+          <button type="button" data-value="normale">Normale</button>
+          <button type="button" data-value="longue">Longue</button>
+        </div>
+      </div>
+      <div class="setting-row">
+        <span class="setting-label">Virus ☣️</span>
+        <button type="button" class="switch" id="virusSwitch" aria-label="Activer les virus"></button>
+      </div>
+      <div class="setting-row">
+        <span class="setting-label">Mode soif (gorgées ×2) 🥵</span>
+        <button type="button" class="switch" id="soifSwitch" aria-label="Activer le mode soif"></button>
+      </div>
+    </div>
     <button id="startBtn" class="btn btn-primary" disabled>C'est parti !</button>
-    <p class="disclaimer">Il faut au moins 2 joueurs. L'abus d'alcool est dangereux pour la santé — buvez avec modération, et rien n'interdit de jouer au jus de pomme. Interdit aux mineurs.</p>
+    <p class="disclaimer">Il faut au moins 2 joueurs. Jeu réservé aux adultes — chaque défi se refuse en buvant, et personne n'est obligé de boire de l'alcool : le jus de pomme est un choix de vie respectable. L'abus d'alcool est dangereux pour la santé.</p>
   </section>
 
   <!-- Jeu -->
@@ -262,6 +366,7 @@
       question: { label: "Question",      color: "#8ecbff" },
       vote:     { label: "Vote",          color: "#c9a7ff" },
       jeu:      { label: "Jeu",           color: "#ffb37c" },
+      chaud:    { label: "Chaud 🔞",      color: "#ff6b6b" },
       virus:    { label: "Virus",         color: "#7cf0e6" },
       antidote: { label: "Fin du virus",  color: "#7cf0e6" },
     };
@@ -282,7 +387,9 @@
         "Les personnes en chaussettes boivent 1 gorgée.",
         "Celles et ceux qui ont un fond d'écran avec un animal boivent 2 gorgées.",
         "Tour de table : chacun dit « je n'ai jamais… ». Ceux qui l'ont fait boivent 1 gorgée.",
-        "Quiconque a déjà chanté sous la douche aujourd'hui même boit 2 gorgées. On vous croit sur parole.",
+        "Quiconque a déjà vomi en soirée boit 2 gorgées. Les autres n'ont juste pas assez essayé.",
+        "Quiconque a déjà menti ce soir boit 2 gorgées. Oui, on te voit hésiter.",
+        "Quiconque est déjà rentré de soirée en marchant parce que « c'est pas si loin » boit 2 gorgées.",
       ],
       apero: [
         "{p1}, bois 2 gorgées. C'est comme ça.",
@@ -297,6 +404,8 @@
         "{p1} et {p2}, bras de fer (ou duel de regards, 20 secondes). Le perdant boit 3 gorgées.",
         "{p1}, offre 2 gorgées à la personne la mieux habillée de la pièce.",
         "{p1}, bois 1 gorgée par personne qui porte le même type de haut que toi.",
+        "{p1}, finis ton verre ou finis celui de {p2}. Choisis vite.",
+        "{p1}, waterfall avec {p2} : vous buvez en même temps, tu ne peux t'arrêter que quand {p2} s'arrête.",
       ],
       defi: [
         "{p1}, imite un animal choisi par le groupe jusqu'à ce que quelqu'un devine. Personne ne trouve ? 3 gorgées.",
@@ -309,8 +418,10 @@
         "{p1}, tiens en équilibre sur une jambe jusqu'à la prochaine carte, ou bois 2 gorgées.",
         "{p1}, chante le refrain d'une chanson choisie par {p2}, ou bois 3 gorgées.",
         "{p1}, complimente sincèrement chaque personne de la pièce, ou bois 3 gorgées.",
-        "{p1}, laisse {p2} publier ce qu'il veut… non, on plaisante. Fais-lui juste ton meilleur compliment, ou buvez 2 gorgées chacun.",
         "{p1}, imite {p2} jusqu'à ce que le groupe valide. Refus ? 3 gorgées.",
+        "{p1}, montre ta dernière conversation WhatsApp (juste les 3 derniers messages) ou bois 4 gorgées.",
+        "{p1}, laisse {p2} envoyer un emoji de son choix à ton dernier contact, ou bois 4 gorgées.",
+        "{p1}, appelle un pote pas présent ce soir et dis-lui juste « je sais ce que tu as fait », puis raccroche. Ou bois 4 gorgées.",
       ],
       question: [
         "{p1}, cite 5 marques de bière en 15 secondes, ou bois 2 gorgées.",
@@ -320,11 +431,13 @@
         "{p1}, cite 4 villes bretonnes en 10 secondes, ou bois 2 gorgées.",
         "{p1}, que veut dire « yec'hed mat » ? Mauvaise réponse : 2 gorgées.",
         "{p1}, cite 3 crêperies ou plats bretons en 10 secondes, ou bois 2 gorgées.",
-        "{p1}, épelle « anticonstitutionnellement » à l'envers… ou plus raisonnablement « Bretagne ». Erreur : 2 gorgées.",
+        "{p1}, épelle « Bretagne » à l'envers. Erreur : 2 gorgées.",
         "{p1}, cite 5 pays dont le drapeau contient du rouge, en 15 secondes. Sinon 2 gorgées.",
         "{p1}, quel est le prénom de la mère de {p2} ? Mauvaise réponse : 2 gorgées. Bonne réponse : {p2} boit.",
         "{p1}, cite 3 chansons qui parlent d'alcool, en 20 secondes. Sinon 2 gorgées.",
         "{p1}, combien y a-t-il de communes en France, à 5 000 près ? Le groupe tranche. Perdu : 3 gorgées.",
+        "{p1}, cite 3 cocktails contenant du rhum, en 10 secondes. Sinon 2 gorgées.",
+        "{p1}, quel âge a {p2} ? Jour et mois de naissance en bonus. Erreur : 2 gorgées par info fausse.",
       ],
       vote: [
         "À 3, tout le monde pointe la personne la plus susceptible de s'endormir en premier ce soir. La plus pointée boit 2 gorgées.",
@@ -336,6 +449,8 @@
         "À 3, pointez la personne qui tiendrait le moins longtemps sans son téléphone. Elle boit 2 gorgées.",
         "À 3, pointez la personne la plus radine. Elle paie sa tournée… ou boit 3 gorgées.",
         "À 3, pointez le meilleur danseur. Il fait une démo ou boit 2 gorgées.",
+        "À 3, pointez la personne la plus susceptible de finir en garde à vue pour une histoire absurde. Elle boit 3 gorgées.",
+        "À 3, pointez la personne qui gère le moins bien l'alcool. Elle boit 2 gorgées, avec dignité.",
       ],
       jeu: [
         "Dans le sens des aiguilles d'une montre, citez chacun une marque de voiture. Le premier qui sèche ou répète boit 3 gorgées. {p1} commence.",
@@ -347,6 +462,7 @@
         "Concours de grimaces arbitré par {p1}. Le vainqueur distribue 2 gorgées, {p1} ne participe pas mais boit 1 gorgée pour la peine.",
         "Chacun son tour, citez un animal marin. Le premier qui sèche boit 2 gorgées. {p1} commence.",
         "Le mot interdit jusqu'à la prochaine carte « Jeu » : « alors ». 1 gorgée par oubli, tout le monde surveille tout le monde.",
+        "Médusa : tout le monde baisse la tête, à 3 chacun regarde quelqu'un. Si deux personnes se regardent, elles boivent 2 gorgées. {p1} compte.",
       ],
       virus: [
         {
@@ -380,22 +496,94 @@
       ],
     };
 
+    /* Cartes supplémentaires injectées en ambiance Trash. */
+    const TRASH = {
+      chaud: [
+        "{p1}, ton body count, on veut savoir. Réponds ou bois 5 gorgées.",
+        "{p1}, c'était quand ta dernière fois ? Réponds ou bois 4 gorgées.",
+        "{p1}, raconte ton pire date ou bois 4 gorgées.",
+        "{p1}, raconte ton fantasme le plus avouable, ou bois 4 gorgées.",
+        "{p1}, retire un vêtement (les chaussettes comptent, petit joueur) ou bois 4 gorgées.",
+        "{p1}, fais ta meilleure imitation d'orgasme façon Quand Harry rencontre Sally, ou bois 5 gorgées.",
+        "{p1}, dans cette pièce, avec qui tu matcherais sur Tinder ? Réponds ou bois 4 gorgées.",
+        "{p1}, montre ton historique d'app de rencontre (juste l'écran d'accueil) ou bois 4 gorgées.",
+        "{p1}, fais un bisou sur la joue de {p2}, ou là où {p2} préfère si tout le monde est d'accord. Refus : 3 gorgées chacun.",
+        "{p1} et {p2}, slow collé-serré de 30 secondes, avec ou sans musique. Refus : 3 gorgées chacun.",
+        "{p1} et {p2}, regardez-vous dans les yeux 30 secondes sans rire ni détourner le regard. Le premier qui craque boit 3 gorgées.",
+        "{p1}, quel est ton plus gros red flag ? Réponds honnêtement ou bois 3 gorgées.",
+        "{p1}, mime ta position préférée… au yoga, bien sûr. Ou bois 4 gorgées.",
+        "{p1}, décris ton pire réveil du lendemain de soirée. Ou bois 4 gorgées.",
+        "Quiconque a déjà envoyé un nude boit 3 gorgées. Pas de mytho, on se connaît.",
+        "Quiconque a déjà couché le premier soir boit 2 gorgées. Fièrement.",
+        "Quiconque a déjà stalké un ex à 2h du matin boit 2 gorgées.",
+        "Quiconque a déjà embrassé quelqu'un dans cette pièce boit 3 gorgées. Regards fuyants autorisés.",
+        "{p1}, si tu devais rouler une pelle à quelqu'un ici, ce serait qui ? Réponds ou bois 5 gorgées.",
+        "{p1}, appelle ton crush ou ton ex en haut-parleur pendant 20 secondes, ou bois 6 gorgées. Le groupe choisit le sujet de conversation.",
+        "{p1}, body shot sur {p2} si tout le monde est partant, sinon 4 gorgées chacun.",
+        "À 3, pointez la personne la plus canon de la pièce. La personne élue distribue 4 gorgées.",
+        "{p1}, note ton propre jeu de drague sur 10, et le groupe vote ensuite. Écart de plus de 2 points : 3 gorgées.",
+        "{p1}, raconte l'endroit le plus improbable où tu as fait des galipettes. Ou bois 5 gorgées.",
+      ],
+      tous: [
+        "Ceux qui ont déjà fait des galipettes dans un lieu public boivent 3 gorgées.",
+        "Ceux qui ont un ex dans leurs messages de la semaine boivent 3 gorgées.",
+        "Ceux qui ont déjà fait semblant d'avoir un empêchement pour rester en pyjama boivent 2 gorgées.",
+        "Ceux qui ont déjà regretté un message envoyé bourré boivent 2 gorgées. Les autres mentent.",
+      ],
+      defi: [
+        "{p1}, envoie « faut qu'on parle » à la personne de ton choix dans tes contacts, ou bois 5 gorgées.",
+        "{p1}, cul sec. Non négociable. (Bon d'accord, négociable : 6 gorgées.)",
+        "{p1}, laisse le groupe fouiller 30 secondes dans ta galerie photo, ou bois 5 gorgées.",
+        "{p1}, twerk de 15 secondes arbitré par {p2}, ou bois 4 gorgées.",
+      ],
+      question: [
+        "{p1}, ta pire technique de drague, en détail. Ou bois 3 gorgées.",
+        "{p1}, plutôt plan à trois avec des inconnus ou revoir tous tes ex à la même soirée ? Réponds ou bois 3 gorgées.",
+      ],
+      vote: [
+        "À 3, pointez la personne la plus susceptible d'avoir un compte OnlyFans secret. Elle boit 3 gorgées.",
+        "À 3, pointez la personne qui a le plus de chances de finir la soirée torse nu. Elle boit 3 gorgées, ou assume tout de suite.",
+      ],
+      virus: [
+        {
+          start: "☣️ VIRUS — {p1} et {p2}, vous êtes en couple jusqu'à nouvel ordre : main dans la main obligatoire. Lâchage : 2 gorgées chacun.",
+          end: "💊 ANTIDOTE — {p1} et {p2}, rupture à l'amiable. Vous pouvez vous lâcher la main.",
+        },
+        {
+          start: "☣️ VIRUS — {p1}, termine chacune de tes phrases par « …au lit » jusqu'à nouvel ordre. Oubli : 1 gorgée.",
+          end: "💊 ANTIDOTE — {p1}, fini le « au lit ». Sauf si tu y vas vraiment.",
+        },
+      ],
+    };
+
     /* Poids de tirage par catégorie (hors virus, gérés à part). */
     const WEIGHTS = { tous: 3, apero: 4, defi: 3, question: 3, vote: 2, jeu: 2 };
+    const TRASH_WEIGHTS = { ...WEIGHTS, chaud: 5 };
+
+    const DECK_SIZES = { courte: 25, normale: 40, longue: 60 };
 
     /* ------------------------------------------------------------------ */
     /* État                                                                */
     /* ------------------------------------------------------------------ */
 
-    const STORAGE_KEY = "riboul.players";
+    const PLAYERS_KEY = "riboul.players";
+    const SETTINGS_KEY = "riboul.settings";
+    const DEFAULT_SETTINGS = { mode: "trash", length: "normale", virus: true, soif: false };
+
     let players = [];
+    let settings = { ...DEFAULT_SETTINGS };
     let deck = [];
     let index = 0;
 
     try {
-      players = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+      players = JSON.parse(localStorage.getItem(PLAYERS_KEY)) || [];
       if (!Array.isArray(players)) players = [];
     } catch { players = []; }
+
+    try {
+      const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY));
+      if (saved && typeof saved === "object") settings = { ...DEFAULT_SETTINGS, ...saved };
+    } catch {}
 
     /* ------------------------------------------------------------------ */
     /* Utilitaires                                                         */
@@ -412,8 +600,8 @@
       return a;
     }
 
-    function pickWeightedCategory() {
-      const entries = Object.entries(WEIGHTS);
+    function pickWeightedCategory(weights) {
+      const entries = Object.entries(weights);
       const total = entries.reduce((s, [, w]) => s + w, 0);
       let r = Math.random() * total;
       for (const [cat, w] of entries) {
@@ -432,33 +620,55 @@
       ];
     }
 
+    /* Mode soif : double les gorgées annoncées. */
+    function applySoif(text) {
+      if (!settings.soif) return text;
+      return text.replace(/(\d+) gorgées?/g, (_, n) => (Number(n) * 2) + " gorgées");
+    }
+
     /* ------------------------------------------------------------------ */
     /* Construction du paquet                                              */
     /* ------------------------------------------------------------------ */
 
-    function buildDeck() {
-      const size = Math.min(45, 30 + players.length * 2);
+    function activePools() {
+      const trash = settings.mode === "trash";
       const pools = {};
-      for (const cat of Object.keys(WEIGHTS)) pools[cat] = shuffle(PROMPTS[cat]);
+      for (const cat of Object.keys(WEIGHTS)) {
+        pools[cat] = PROMPTS[cat].concat(trash ? TRASH[cat] || [] : []);
+      }
+      if (trash) pools.chaud = TRASH.chaud;
+      return pools;
+    }
+
+    function buildDeck() {
+      const trash = settings.mode === "trash";
+      const weights = trash ? TRASH_WEIGHTS : WEIGHTS;
+      const size = DECK_SIZES[settings.length] || DECK_SIZES.normale;
+      const source = activePools();
+      const pools = {};
+      for (const [cat, list] of Object.entries(source)) pools[cat] = shuffle(list);
 
       const cards = [];
       while (cards.length < size) {
-        const cat = pickWeightedCategory();
-        if (pools[cat].length === 0) pools[cat] = shuffle(PROMPTS[cat]);
+        const cat = pickWeightedCategory(weights);
+        if (pools[cat].length === 0) pools[cat] = shuffle(source[cat]);
         const [text] = fillPlayers(pools[cat].pop());
-        cards.push({ cat, text });
+        cards.push({ cat, text: applySoif(text) });
       }
 
       /* Virus : 2 à 4 paires selon la taille du paquet, l'antidote arrive 4 à 9 cartes plus tard. */
-      const virusCount = Math.min(2 + rand(3), Math.floor(size / 12));
-      const viruses = shuffle(PROMPTS.virus).slice(0, virusCount);
-      for (const v of viruses) {
-        const startPos = 2 + rand(Math.max(1, cards.length - 12));
-        const [startText, names] = fillPlayers(v.start);
-        const [endText] = fillPlayers(v.end, names);
-        cards.splice(startPos, 0, { cat: "virus", text: startText });
-        const endPos = Math.min(startPos + 4 + rand(6), cards.length);
-        cards.splice(endPos, 0, { cat: "antidote", text: endText });
+      if (settings.virus) {
+        const virusPool = PROMPTS.virus.concat(trash ? TRASH.virus : []);
+        const virusCount = Math.min(2 + rand(3), Math.max(1, Math.floor(size / 12)));
+        const viruses = shuffle(virusPool).slice(0, virusCount);
+        for (const v of viruses) {
+          const startPos = 2 + rand(Math.max(1, cards.length - 12));
+          const [startText, names] = fillPlayers(v.start);
+          const [endText] = fillPlayers(v.end, names);
+          cards.splice(startPos, 0, { cat: "virus", text: applySoif(startText) });
+          const endPos = Math.min(startPos + 4 + rand(6), cards.length);
+          cards.splice(endPos, 0, { cat: "antidote", text: applySoif(endText) });
+        }
       }
 
       return cards;
@@ -490,7 +700,7 @@
         del.setAttribute("aria-label", "Retirer " + name);
         del.addEventListener("click", () => {
           players.splice(i, 1);
-          persistPlayers();
+          persist(PLAYERS_KEY, players);
           renderPlayers();
         });
         chip.appendChild(del);
@@ -499,8 +709,19 @@
       $("startBtn").disabled = players.length < 2;
     }
 
-    function persistPlayers() {
-      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(players)); } catch {}
+    function renderSettings() {
+      for (const btn of $("modeSeg").querySelectorAll("button")) {
+        btn.classList.toggle("active", btn.dataset.value === settings.mode);
+      }
+      for (const btn of $("lengthSeg").querySelectorAll("button")) {
+        btn.classList.toggle("active", btn.dataset.value === settings.length);
+      }
+      $("virusSwitch").classList.toggle("on", settings.virus);
+      $("soifSwitch").classList.toggle("on", settings.soif);
+    }
+
+    function persist(key, value) {
+      try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
     }
 
     function renderCard() {
@@ -548,10 +769,38 @@
         return;
       }
       players.push(name);
-      persistPlayers();
+      persist(PLAYERS_KEY, players);
       renderPlayers();
       input.value = "";
       input.focus();
+    });
+
+    $("modeSeg").addEventListener("click", (e) => {
+      const value = e.target.dataset?.value;
+      if (!value) return;
+      settings.mode = value;
+      persist(SETTINGS_KEY, settings);
+      renderSettings();
+    });
+
+    $("lengthSeg").addEventListener("click", (e) => {
+      const value = e.target.dataset?.value;
+      if (!value) return;
+      settings.length = value;
+      persist(SETTINGS_KEY, settings);
+      renderSettings();
+    });
+
+    $("virusSwitch").addEventListener("click", () => {
+      settings.virus = !settings.virus;
+      persist(SETTINGS_KEY, settings);
+      renderSettings();
+    });
+
+    $("soifSwitch").addEventListener("click", () => {
+      settings.soif = !settings.soif;
+      persist(SETTINGS_KEY, settings);
+      renderSettings();
     });
 
     $("startBtn").addEventListener("click", startGame);
@@ -571,6 +820,7 @@
     });
 
     renderPlayers();
+    renderSettings();
   </script>
 </body>
 </html>
