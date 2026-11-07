@@ -1123,7 +1123,7 @@ onBeforeUnmount(() => {
                     ?.color,
                 ),
               }"
-              :aria-label="`Ligne ${Math.floor(index / lobby.size) + 1}, colonne ${(index % lobby.size) + 1} : ${cell.word}, ${lobby.players.find((player) => player.id === cell.ownerId)?.name}, ${cell.validated ? 'validée' : 'non validée'}${cell.sips == null ? ', gorgées cachées' : ', ' + cell.sips + ' gorgées'}`"
+              :aria-label="`Ligne ${Math.floor(index / lobby.size) + 1}, colonne ${(index % lobby.size) + 1} : ${cell.word}, ${cell.validated ? 'validée' : 'non validée'}${cell.sips == null ? ', gorgées cachées' : ', ' + cell.sips + ' gorgées'}`"
               @click="openCell(cell)"
             >
               <span class="cell-word">{{ cell.word }}</span

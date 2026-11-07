@@ -4,9 +4,9 @@ import { mkdir } from 'node:fs/promises'
 
 interface Session { code: string; playerId: string; token: string; hostKey: string | null }
 
-async function prepare(page: Page, name: string, count: number) {
-  for (let index = 0; index < count; index++) {
-    await page.getByTestId(`word-${index}`).fill(`${name} — mot ${index + 1}`)
+async function prepare(page: Page, words: string[]) {
+  for (let index = 0; index < words.length; index++) {
+    await page.getByTestId(`word-${index}`).fill(words[index]!)
     const sip = page.getByTestId(`sip-${index}`)
     if (await sip.count()) await sip.fill(String(index))
   }
@@ -26,6 +26,12 @@ test('quatre téléphones : préparation privée, grille partagée, bonus, recon
   const contexts: BrowserContext[] = []
   const pages: Page[] = []
   const names = ['Alice', 'Benoît', 'Chloé', 'Dorian']
+  const preparations = [
+    ['Une anecdote', 'La Bretagne', 'Une photo', 'Le fou rire'],
+    ['La playlist', 'Un compliment', 'La pluie', 'Un selfie'],
+    ['Le dessert', 'Un souvenir', 'Les vacances', 'Un toast'],
+    ['Le retardataire', 'La chanson', 'Un jeu de mots', 'Une surprise'],
+  ]
   try {
     for (let index = 0; index < 4; index++) {
       const context = await browser.newContext({ baseURL: 'http://127.0.0.1:5173', viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true })
@@ -59,8 +65,8 @@ test('quatre téléphones : préparation privée, grille partagée, bonus, recon
     await host.getByTestId('mode-manual').check()
     await host.getByTestId('save-settings').click()
     for (const page of pages) await expect(page.getByTestId('sip-0')).toBeVisible()
-    for (let index = 0; index < 4; index++) await prepare(pages[index]!, names[index]!, 4)
-    await expect(pages[1]!.getByText('Alice — mot 1', { exact: true })).toHaveCount(0)
+    for (let index = 0; index < 4; index++) await prepare(pages[index]!, preparations[index]!)
+    await expect(pages[1]!.getByText('Une anecdote', { exact: true })).toHaveCount(0)
     await mkdir('/tmp/bingo-screenshots', { recursive: true })
     await pages[1]!.screenshot({ path: '/tmp/bingo-screenshots/lobby-mobile.png', fullPage: true })
     await expect(host.getByTestId('start-game')).toBeEnabled()
@@ -69,7 +75,7 @@ test('quatre téléphones : préparation privée, grille partagée, bonus, recon
     await host.screenshot({ path: '/tmp/bingo-screenshots/game-mobile-4x4.png', fullPage: true })
 
     // Hidden values are absent from the guest's detail until the host validates.
-    const foreignCell = pages[1]!.getByTestId('cell').filter({ hasText: 'Alice — mot 1' })
+    const foreignCell = pages[1]!.getByTestId('cell').filter({ hasText: 'Une anecdote' })
     await foreignCell.click()
     await expect(pages[1]!.getByTestId('cell-detail')).toContainText('Gorgées secrètes')
     await expect(pages[1]!.getByTestId('validate-cell')).toHaveCount(0)
@@ -79,8 +85,10 @@ test('quatre téléphones : préparation privée, grille partagée, bonus, recon
     const firstRowWords = await host.getByTestId('cell').locator('.cell-word').allTextContents()
     const expectedScores = new Map(names.map(name => [name, 0]))
     for (const word of firstRowWords.slice(0, 4)) {
-      const [name, number] = word.split(' — mot ')
-      expectedScores.set(name!, expectedScores.get(name!)! + Number(number) - 1)
+      const ownerIndex = preparations.findIndex(words => words.includes(word))
+      const name = names[ownerIndex]!
+      const sips = preparations[ownerIndex]!.indexOf(word)
+      expectedScores.set(name, expectedScores.get(name)! + sips)
     }
     for (let index = 0; index < 4; index++) {
       await host.getByTestId('cell').nth(index).click()
@@ -167,7 +175,7 @@ test('grille 10 × 10 lisible et sans débordement sur un téléphone étroit', 
     }
     await host.invoke('SetSettings', 10, 'random')
     for (let index = 0; index < 10; index++) {
-      await clients[index]!.invoke('SavePreparation', Array.from({ length: 10 }, (_, word) => `Mot très long numéro ${word} de notre ami ${index}`), Array(10).fill(0))
+      await clients[index]!.invoke('SavePreparation', Array.from({ length: 10 }, (_, word) => `Une expression très longue à lire en entier ${index * 10 + word}`), Array(10).fill(0))
     }
     await host.invoke('Start')
     await page.setViewportSize({ width: 320, height: 720 })
@@ -188,7 +196,7 @@ test('grille 10 × 10 lisible et sans débordement sur un téléphone étroit', 
     await mkdir('/tmp/bingo-screenshots', { recursive: true })
     await page.screenshot({ path: '/tmp/bingo-screenshots/game-mobile-10x10.png', fullPage: true })
     await page.getByTestId('cell').first().click()
-    await expect(page.getByTestId('cell-detail')).toContainText('Mot très long numéro')
+    await expect(page.getByTestId('cell-detail')).toContainText('Une expression très longue à lire en entier')
     const detail = await page.getByTestId('cell-detail').boundingBox()
     expect(detail!.width).toBeGreaterThan(bounds!.width / 2)
     await page.getByTestId('dismiss-cell').click()
