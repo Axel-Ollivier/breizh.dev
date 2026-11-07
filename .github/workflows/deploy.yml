@@ -10,8 +10,12 @@ env:
   APP_DIR: /apps/breizhdev
 
 jobs:
+  check-bingo:
+    uses: ./.github/workflows/bingo-check.yml
+
   build-and-push:
     runs-on: ubuntu-latest
+    needs: check-bingo
     permissions:
       contents: read
       packages: write
@@ -37,6 +41,12 @@ jobs:
           - name: idle-consulting
             context: apps/idle-consulting
             dockerfile: apps/idle-consulting/Dockerfile
+          - name: bingo-frontend
+            context: apps/bingo/frontend
+            dockerfile: apps/bingo/frontend/Dockerfile
+          - name: bingo-backend
+            context: apps/bingo/backend
+            dockerfile: apps/bingo/backend/Dockerfile
 
     steps:
       - name: Checkout

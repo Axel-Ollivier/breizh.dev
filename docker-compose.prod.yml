@@ -7,6 +7,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.breizhdev.rule=Host(`breizh.dev`) || Host(`www.breizh.dev`)"
+      - "traefik.http.routers.breizhdev.priority=10"
       - "traefik.http.routers.breizhdev.entrypoints=websecure"
       - "traefik.http.routers.breizhdev.tls.certresolver=letsencrypt"
       - "traefik.http.services.breizhdev.loadbalancer.server.port=8080"
@@ -70,6 +71,41 @@ services:
       - "traefik.http.routers.idle-consulting.entrypoints=websecure"
       - "traefik.http.routers.idle-consulting.tls.certresolver=letsencrypt"
       - "traefik.http.services.idle-consulting.loadbalancer.server.port=80"
+
+  bingo-frontend:
+    image: ghcr.io/axel-ollivier/bingo-frontend:latest
+    restart: unless-stopped
+    networks:
+      - web
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=web"
+      - "traefik.http.routers.bingo-frontend.rule=(Host(`breizh.dev`) || Host(`www.breizh.dev`)) && (Path(`/bingo`) || PathPrefix(`/bingo/`))"
+      - "traefik.http.routers.bingo-frontend.priority=200"
+      - "traefik.http.routers.bingo-frontend.entrypoints=websecure"
+      - "traefik.http.routers.bingo-frontend.tls.certresolver=letsencrypt"
+      - "traefik.http.services.bingo-frontend.loadbalancer.server.port=80"
+
+  bingo-backend:
+    image: ghcr.io/axel-ollivier/bingo-backend:latest
+    restart: unless-stopped
+    # In-memory lobbies require exactly one backend instance.
+    deploy:
+      replicas: 1
+    environment:
+      ASPNETCORE_HTTP_PORTS: "8080"
+      Bingo__DisconnectGraceSeconds: "60"
+      Bingo__MaxLobbies: "500"
+    networks:
+      - web
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=web"
+      - "traefik.http.routers.bingo-backend.rule=(Host(`breizh.dev`) || Host(`www.breizh.dev`)) && (Path(`/bingo/api`) || PathPrefix(`/bingo/api/`) || Path(`/bingo/hub`) || PathPrefix(`/bingo/hub/`))"
+      - "traefik.http.routers.bingo-backend.priority=300"
+      - "traefik.http.routers.bingo-backend.entrypoints=websecure"
+      - "traefik.http.routers.bingo-backend.tls.certresolver=letsencrypt"
+      - "traefik.http.services.bingo-backend.loadbalancer.server.port=8080"
 
 networks:
   web:

@@ -1,0 +1,92 @@
+name: Bingo checks
+
+on:
+  push:
+    branches: [feat/bingo-multiplayer]
+    paths:
+      - 'apps/bingo/**'
+      - 'docker-compose.prod.yml'
+      - '.github/workflows/bingo-check.yml'
+      - '.github/workflows/deploy.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'apps/bingo/**'
+      - 'docker-compose.prod.yml'
+      - '.github/workflows/bingo-check.yml'
+      - '.github/workflows/deploy.yml'
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: apps/bingo/frontend/package-lock.json
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - run: npm ci
+        working-directory: apps/bingo/frontend
+      - run: npm test
+        working-directory: apps/bingo/frontend
+      - run: npm run build
+        working-directory: apps/bingo/frontend
+      - run: npx playwright install --with-deps chromium
+        working-directory: apps/bingo/frontend
+      - run: npm run test:e2e
+        working-directory: apps/bingo/frontend
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: bingo-browser-results
+          path: |
+            apps/bingo/frontend/playwright-report/
+            apps/bingo/frontend/test-results/
+
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - run: dotnet test apps/bingo/backend.tests/Bingo.Tests.csproj --configuration Release --logger 'trx;LogFileName=bingo.trx'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bingo-test-results
+          path: apps/bingo/backend.tests/TestResults/*.trx
+
+  containers:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate production Compose
+        run: docker compose -f docker-compose.prod.yml config --quiet
+      - uses: docker/setup-buildx-action@v3
+      - name: Build frontend without publishing
+        uses: docker/build-push-action@v6
+        with:
+          context: apps/bingo/frontend
+          file: apps/bingo/frontend/Dockerfile
+          push: false
+          load: true
+          tags: bingo-frontend:check
+      - name: Build backend without publishing
+        uses: docker/build-push-action@v6
+        with:
+          context: apps/bingo/backend
+          file: apps/bingo/backend/Dockerfile
+          push: false
+          load: true
+          tags: bingo-backend:check
+      - name: Check production routes with Traefik and SignalR WebSocket
+        run: python3 apps/bingo/test-routing.py

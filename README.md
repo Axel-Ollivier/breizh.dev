@@ -85,6 +85,10 @@ Les projets sont définis dans `Content/projects/projects.json` :
 
 ## Mini apps (sous-domaines)
 
+[Bingo multijoueur](apps/bingo/README.md) est disponible sous `/bingo/` sur le
+domaine existant, avec Vue 3, ASP.NET Core 10 et SignalR. Ses deux conteneurs
+sont construits et déployés par la même CI, sans modification DNS.
+
 En plus du site principal, le dépôt héberge des **mini apps front** autonomes,
 chacune servie sur son propre sous-domaine via un conteneur dédié. Le routage est
 géré par **Traefik** (labels Docker dans `docker-compose.prod.yml`).
