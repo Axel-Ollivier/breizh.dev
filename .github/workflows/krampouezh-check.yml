@@ -1,0 +1,74 @@
+name: Krampouezh checks
+
+on:
+  push:
+    branches: [feat/krampouezh-leaderboard]
+    paths:
+      - 'apps/krampouezh/**'
+      - 'docker-compose.prod.yml'
+      - '.github/workflows/krampouezh-check.yml'
+      - '.github/workflows/deploy.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'apps/krampouezh/**'
+      - 'docker-compose.prod.yml'
+      - '.github/workflows/krampouezh-check.yml'
+      - '.github/workflows/deploy.yml'
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - run: dotnet test apps/krampouezh/server.tests/Krampouezh.Tests.csproj --configuration Release --logger 'trx;LogFileName=krampouezh.trx'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install playwright==1.62.0
+      - run: python -m playwright install --with-deps chromium
+      - name: Check browser flows against the API
+        env:
+          KRAMP_BASE_URL: http://127.0.0.1:5080
+        run: |
+          Leaderboard__DataPath="$RUNNER_TEMP/krampouezh-test-data/leaderboard.db" \
+            dotnet run --project apps/krampouezh/server --configuration Release \
+            --no-build --no-launch-profile --urls "$KRAMP_BASE_URL" \
+            > "$RUNNER_TEMP/krampouezh-server.log" 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          curl --fail --silent --show-error --retry 30 --retry-connrefused \
+            --retry-delay 1 --max-time 2 "$KRAMP_BASE_URL/api/leaderboard" > /dev/null
+          python apps/krampouezh/test-browser.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: krampouezh-test-results
+          path: |
+            apps/krampouezh/server.tests/TestResults/*.trx
+            ${{ runner.temp }}/krampouezh-server.log
+
+  container:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate production Compose
+        run: docker compose -f docker-compose.prod.yml config --quiet
+      - uses: docker/setup-buildx-action@v3
+      - name: Build without publishing
+        uses: docker/build-push-action@v6
+        with:
+          context: apps/krampouezh
+          file: apps/krampouezh/Dockerfile
+          push: false
+          load: true
+          tags: krampouezh:check
+      - name: Check static UI, API and persistent data in the container
+        run: python3 apps/krampouezh/test-container.py

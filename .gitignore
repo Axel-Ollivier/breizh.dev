@@ -44,3 +44,9 @@ apps/bingo/frontend/test-results/
 apps/bingo/frontend/playwright-report/
 apps/bingo/frontend/*.tsbuildinfo
 apps/bingo/backend.tests/TestResults/
+
+## Krampouezh data and test artifacts
+apps/krampouezh/server/data/
+apps/krampouezh/server.tests/TestResults/
+apps/krampouezh/test-results/
+apps/krampouezh/__pycache__/

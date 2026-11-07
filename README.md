@@ -89,7 +89,10 @@ Les projets sont définis dans `Content/projects/projects.json` :
 domaine existant, avec Vue 3, ASP.NET Core 10 et SignalR. Ses deux conteneurs
 sont construits et déployés par la même CI, sans modification DNS.
 
-En plus du site principal, le dépôt héberge des **mini apps front** autonomes,
+[Krampouezh](apps/krampouezh/README.md) propose un top 100 partagé et le rang de
+chaque score parmi toutes les parties enregistrées, avec ASP.NET Core 10 et SQLite.
+
+En plus du site principal, le dépôt héberge des **mini apps** autonomes,
 chacune servie sur son propre sous-domaine via un conteneur dédié. Le routage est
 géré par **Traefik** (labels Docker dans `docker-compose.prod.yml`).
 
@@ -98,8 +101,9 @@ apps/
 ├── prout/               → prout.breizh.dev (page statique, servie par nginx)
 │   ├── index.html
 │   └── Dockerfile
-├── krampouezh/          → krampouezh.breizh.dev (jeu d'empilement de crêpes, canvas)
+├── krampouezh/          → krampouezh.breizh.dev (jeu canvas et classement partagé)
 │   ├── index.html
+│   ├── server/          → API ASP.NET Core 10, scores persistés avec SQLite
 │   └── Dockerfile
 ├── awen/                → awen.breizh.dev (séquenceur hardstyle génératif — Vite + React + Tone.js)
 │   ├── src/             → engine (logique pure) / audio (Tone) / ui (React) / state (Zustand)

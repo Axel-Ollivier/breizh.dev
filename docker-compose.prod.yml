@@ -27,6 +27,14 @@ services:
   krampouezh:
     image: ghcr.io/axel-ollivier/krampouezh:latest
     restart: unless-stopped
+    # One instance owns the persistent SQLite leaderboard.
+    deploy:
+      replicas: 1
+    environment:
+      ASPNETCORE_HTTP_PORTS: "8080"
+      Leaderboard__DataPath: /app/data/leaderboard.db
+    volumes:
+      - krampouezh-data:/app/data
     networks:
       - web
     labels:
@@ -34,7 +42,7 @@ services:
       - "traefik.http.routers.krampouezh.rule=Host(`krampouezh.breizh.dev`)"
       - "traefik.http.routers.krampouezh.entrypoints=websecure"
       - "traefik.http.routers.krampouezh.tls.certresolver=letsencrypt"
-      - "traefik.http.services.krampouezh.loadbalancer.server.port=80"
+      - "traefik.http.services.krampouezh.loadbalancer.server.port=8080"
 
   riboul:
     image: ghcr.io/axel-ollivier/riboul:latest
@@ -106,6 +114,9 @@ services:
       - "traefik.http.routers.bingo-backend.entrypoints=websecure"
       - "traefik.http.routers.bingo-backend.tls.certresolver=letsencrypt"
       - "traefik.http.services.bingo-backend.loadbalancer.server.port=8080"
+
+volumes:
+  krampouezh-data:
 
 networks:
   web:
