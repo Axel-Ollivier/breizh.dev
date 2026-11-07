@@ -13,9 +13,12 @@ jobs:
   check-bingo:
     uses: ./.github/workflows/bingo-check.yml
 
+  check-krampouezh:
+    uses: ./.github/workflows/krampouezh-check.yml
+
   build-and-push:
     runs-on: ubuntu-latest
-    needs: check-bingo
+    needs: [check-bingo, check-krampouezh]
     permissions:
       contents: read
       packages: write

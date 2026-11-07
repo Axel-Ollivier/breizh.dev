@@ -1,0 +1,7 @@
+**/bin/
+**/obj/
+**/data/
+**/TestResults/
+server.tests/
+test-results/
+__pycache__/

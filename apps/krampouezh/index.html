@@ -31,16 +31,22 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
+      justify-content: flex-start;
       gap: 0.75rem;
       text-align: center;
       color: #2b2b2b;
       pointer-events: none;
       opacity: 0;
+      visibility: hidden;
       transition: opacity 0.3s ease;
+      padding: 1.5rem 1rem 2.5rem;
+      overflow-y: auto;
     }
 
-    .overlay.visible { opacity: 1; }
+    .overlay.visible { opacity: 1; visibility: visible; pointer-events: auto; }
+    .overlay > * { flex-shrink: 0; }
+    .overlay > :first-child { margin-top: auto; }
+    .overlay > :last-child { margin-bottom: auto; }
 
     .overlay h1 {
       font-size: clamp(2rem, 8vw, 3.2rem);
@@ -116,6 +122,78 @@
     }
 
     footer a { color: inherit; pointer-events: auto; }
+
+    button, input { font: inherit; }
+    button { cursor: pointer; touch-action: manipulation; }
+    button:disabled { cursor: default; opacity: 0.6; }
+    button:focus-visible, input:focus-visible, a:focus-visible {
+      outline: 3px solid #a65d12;
+      outline-offset: 4px;
+    }
+    .hint { background: #faf6ef; color: #2b2b2b; }
+    .secondary {
+      border: 0;
+      border-radius: 999px;
+      background: #ece5d9;
+      color: #514635;
+      padding: 0.65rem 1.2rem;
+      font-weight: 600;
+    }
+    #score-form {
+      width: min(100%, 22rem);
+      padding: 1rem;
+      border: 1px solid #ded3c2;
+      border-radius: 1rem;
+      background: #faf6ef;
+      text-align: left;
+    }
+    #score-form label { display: block; margin-bottom: 0.5rem; font-size: 0.9rem; font-weight: 600; }
+    .submit-row { display: flex; gap: 0.5rem; }
+    #player-name {
+      width: 100%;
+      min-width: 0;
+      padding: 0.65rem;
+      border: 1px solid #b0a794;
+      border-radius: 0.5rem;
+      background: #fffdf9;
+      color: #2b2b2b;
+      user-select: text;
+      -webkit-user-select: text;
+    }
+    #submit-score { border: 0; border-radius: 0.5rem; background: #2b2b2b; color: #faf6ef; padding: 0.65rem 0.9rem; }
+    #submit-status { max-width: 24rem; font-size: 0.9rem; }
+    #submit-status:empty { display: none; }
+    #leaderboard {
+      margin: auto;
+      width: min(28rem, calc(100% - 2rem));
+      max-height: calc(100dvh - 2rem);
+      padding: 1.25rem;
+      border: 1px solid #ded3c2;
+      border-radius: 1.25rem;
+      background: #faf6ef;
+      color: #2b2b2b;
+      box-shadow: 0 1rem 4rem #2b2b2b26;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+    }
+    #leaderboard::backdrop { background: #2b2b2b70; }
+    .leaderboard-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; position: sticky; top: 0; padding: 0.4rem 0; background: #faf6ef; }
+    .leaderboard-header h2 { font-size: 1.4rem; }
+    #close-leaderboard { padding: 0.5rem 0.75rem; }
+    .leaderboard-caption, #leaderboard-status { margin-top: 0.75rem; color: #6b6357; font-size: 0.9rem; }
+    #player-rank { margin-top: 1rem; padding: 0.8rem; border-radius: 0.75rem; background: #f3dfb9; font-weight: 600; }
+    #leaderboard-list { list-style: none; margin-top: 1rem; }
+    #leaderboard-list li { display: grid; grid-template-columns: 2.5rem 1fr auto; align-items: baseline; gap: 0.5rem; padding: 0.65rem 0; border-bottom: 1px solid #e5ddcf; }
+    #leaderboard-list .rank { color: #80705a; font-variant-numeric: tabular-nums; }
+    #leaderboard-list .name { overflow-wrap: anywhere; min-width: 0; }
+    #leaderboard-list .points { font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    #leaderboard-list .own-score { color: #8b4e11; background: #f3dfb944; }
+    #refresh-leaderboard { margin-top: 1rem; }
+    [hidden] { display: none !important; }
+    @media (prefers-reduced-motion: reduce) {
+      .overlay { transition: none; }
+      .overlay .hint { animation: none; }
+    }
   </style>
 </head>
 <body>
@@ -126,19 +204,41 @@
     <div class="best"></div>
   </div>
 
-  <div id="title-screen" class="overlay visible">
+  <div id="title-screen" class="overlay visible" data-game-ui>
     <div class="flag">⬛⬜⬛</div>
     <h1>Krampouezh</h1>
     <p>Empile les crêpes le plus haut possible.<br>Ce qui dépasse est coupé !</p>
-    <div class="hint">Tape pour jouer</div>
+    <button type="button" class="hint" id="play">Tape pour jouer</button>
+    <button type="button" class="secondary" data-leaderboard>Classement</button>
   </div>
 
-  <div id="over-screen" class="overlay">
+  <div id="over-screen" class="overlay" data-game-ui>
     <p>Ta pile de crêpes :</p>
     <div class="big-score">0</div>
     <p class="record-line"></p>
-    <div class="hint">Rejouer</div>
+    <form id="score-form" hidden>
+      <label for="player-name">Ton pseudo pour le classement</label>
+      <div class="submit-row">
+        <input id="player-name" name="name" minlength="2" maxlength="20" required autocomplete="nickname" placeholder="Ex. : Bigouden" aria-describedby="submit-status">
+        <button id="submit-score" type="submit">Envoyer</button>
+      </div>
+    </form>
+    <p id="submit-status" role="status" aria-live="polite"></p>
+    <button type="button" class="hint" id="replay">Rejouer</button>
+    <button type="button" class="secondary" data-leaderboard>Classement</button>
   </div>
+
+  <dialog id="leaderboard" aria-labelledby="leaderboard-title" aria-describedby="leaderboard-caption">
+    <div class="leaderboard-header">
+      <h2 id="leaderboard-title">Les meilleures piles</h2>
+      <button type="button" class="secondary" id="close-leaderboard" autofocus>Fermer</button>
+    </div>
+    <p class="leaderboard-caption" id="leaderboard-caption">Top 100 · Toutes les parties comptent.</p>
+    <p id="player-rank" hidden></p>
+    <p id="leaderboard-status" role="status" aria-live="polite"></p>
+    <ol id="leaderboard-list" aria-label="Top 100 des scores"></ol>
+    <button type="button" class="secondary" id="refresh-leaderboard">Actualiser</button>
+  </dialog>
 
   <footer>krampouezh.<a href="https://breizh.dev">breizh.dev</a></footer>
 
@@ -154,11 +254,29 @@
     const overScreen = document.getElementById('over-screen');
     const overScore = overScreen.querySelector('.big-score');
     const overRecord = overScreen.querySelector('.record-line');
+    const scoreForm = document.getElementById('score-form');
+    const playerName = document.getElementById('player-name');
+    const submitScore = document.getElementById('submit-score');
+    const submitStatus = document.getElementById('submit-status');
+    const leaderboard = document.getElementById('leaderboard');
+    const leaderboardList = document.getElementById('leaderboard-list');
+    const leaderboardStatus = document.getElementById('leaderboard-status');
+    const playerRank = document.getElementById('player-rank');
 
     const BLOCK_H = 30;          // hauteur d'une crêpe (px CSS)
     const BASE_W_RATIO = 0.55;   // largeur de départ vs largeur écran
     const PERFECT_TOLERANCE = 7; // marge (px) pour un empilement parfait
     const BEST_KEY = 'krampouezh-best';
+    const NAME_KEY = 'krampouezh-name';
+    const ENTRY_KEY = 'krampouezh-entry';
+
+    function readLocal(key) {
+      try { return localStorage.getItem(key); } catch { return null; }
+    }
+
+    function writeLocal(key, value) {
+      try { localStorage.setItem(key, value); } catch { /* Le jeu reste utilisable sans stockage local. */ }
+    }
 
     let W = 0, H = 0, dpr = 1;
     let state = 'title'; // title | playing | over
@@ -168,10 +286,129 @@
     let popups = [];     // { text, x, y, life }
     let score = 0;
     let combo = 0;
-    let best = Number(localStorage.getItem(BEST_KEY)) || 0;
+    let best = Number(readLocal(BEST_KEY)) || 0;
     let cameraY = 0;     // décalage vertical du monde (monte avec la pile)
     let cameraTarget = 0;
     let inputLocked = false;
+    let pendingScore = null;
+    let latestSubmission = null;
+    let lastEntryId = readLocal(ENTRY_KEY);
+    if (!/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(lastEntryId || '')) lastEntryId = null;
+    let leaderboardRequest = 0;
+    playerName.value = readLocal(NAME_KEY) || '';
+
+    const numberFormat = new Intl.NumberFormat('fr-FR');
+
+    function rankText(rank, total) {
+      return `Ton score : ${numberFormat.format(rank)}${rank === 1 ? 'er' : 'e'} sur ${numberFormat.format(total)} score${total === 1 ? '' : 's'}.`;
+    }
+
+    async function requestLeaderboard(options = {}, entryId = lastEntryId) {
+      const query = entryId && !options.method ? `?id=${encodeURIComponent(entryId)}` : '';
+      let response;
+      try {
+        response = await fetch(`/api/leaderboard${query}`, {
+          ...options,
+          signal: AbortSignal.timeout(8000),
+        });
+      } catch {
+        throw new Error('Connexion impossible. Vérifie ton réseau puis réessaie.');
+      }
+      if (!response.ok) {
+        if (response.status === 429) throw new Error('Un peu de patience : réessaie dans une minute.');
+        throw new Error('Le classement est indisponible. Réessaie dans un instant.');
+      }
+      return response.json();
+    }
+
+    function renderLeaderboard(data, entryId) {
+      leaderboardList.replaceChildren();
+      data.entries.forEach((entry, index) => {
+        const row = document.createElement('li');
+        if (entry.id === entryId) row.className = 'own-score';
+        const rank = document.createElement('span');
+        rank.className = 'rank';
+        rank.textContent = `${index + 1}.`;
+        const name = document.createElement('span');
+        name.className = 'name';
+        name.textContent = entry.name;
+        const points = document.createElement('span');
+        points.className = 'points';
+        points.textContent = `${numberFormat.format(entry.score)} pts`;
+        row.append(rank, name, points);
+        leaderboardList.append(row);
+      });
+      leaderboardStatus.textContent = data.total
+        ? `${numberFormat.format(data.total)} score${data.total === 1 ? ' enregistré' : 's enregistrés'}. À toi de jouer !`
+        : 'Aucun score pour le moment. Lance la première pile !';
+      playerRank.hidden = data.rank == null;
+      playerRank.textContent = data.rank == null ? '' : rankText(data.rank, data.total);
+    }
+
+    async function loadLeaderboard() {
+      const request = ++leaderboardRequest;
+      const entryId = lastEntryId;
+      leaderboardStatus.textContent = 'Chargement du classement…';
+      leaderboardList.replaceChildren();
+      playerRank.hidden = true;
+      try {
+        const data = await requestLeaderboard({}, entryId);
+        if (request === leaderboardRequest) renderLeaderboard(data, entryId);
+      } catch (error) {
+        if (request === leaderboardRequest) leaderboardStatus.textContent = error.message;
+      }
+    }
+
+    document.querySelectorAll('[data-leaderboard]').forEach(button => {
+      button.addEventListener('click', () => {
+        leaderboard.showModal();
+        loadLeaderboard();
+      });
+    });
+    document.getElementById('close-leaderboard').addEventListener('click', () => leaderboard.close());
+    document.getElementById('refresh-leaderboard').addEventListener('click', loadLeaderboard);
+
+    scoreForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      if (!pendingScore || submitScore.disabled) return;
+      const name = playerName.value.trim();
+      if (Array.from(name).length < 2 || Array.from(name).length > 20 || /[\p{Cc}\p{Cf}]/u.test(name)) {
+        submitStatus.textContent = 'Choisis un pseudo de 2 à 20 caractères, sans caractère invisible.';
+        playerName.focus();
+        return;
+      }
+      // Une nouvelle partie peut commencer avant le retour de la requête.
+      const submission = pendingScore;
+      submission.name ??= name;
+      latestSubmission = submission;
+      playerName.value = submission.name;
+      writeLocal(NAME_KEY, submission.name);
+      submitScore.disabled = true;
+      playerName.disabled = true;
+      submitStatus.textContent = 'Envoi du score…';
+      try {
+        const data = await requestLeaderboard({
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(submission),
+        });
+        if (latestSubmission !== submission) return;
+        lastEntryId = submission.id;
+        writeLocal(ENTRY_KEY, lastEntryId);
+        // Invalide aussi un chargement du classement lancé pendant l'envoi.
+        ++leaderboardRequest;
+        if (leaderboard.open) renderLeaderboard(data, lastEntryId);
+        if (pendingScore !== submission) return;
+        pendingScore = null;
+        scoreForm.hidden = true;
+        submitStatus.textContent = `Score enregistré ! ${rankText(data.rank, data.total)}`;
+      } catch (error) {
+        if (pendingScore !== submission) return;
+        submitStatus.textContent = `${error.message} Ton score peut être renvoyé.`;
+        submitScore.disabled = false;
+        // Conserve le même pseudo et le même identifiant pour une reprise sans doublon.
+      }
+    });
 
     function resize() {
       dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -190,6 +427,8 @@
     }
 
     function newGame() {
+      pendingScore = null;
+      document.activeElement?.blur();
       stack = [{ x: (W - W * BASE_W_RATIO) / 2, w: W * BASE_W_RATIO, seed: Math.random(), butter: false }];
       debris = [];
       popups = [];
@@ -202,7 +441,9 @@
       hudScore.textContent = '0';
       hudBest.textContent = best > 0 ? `Record : ${best}` : '';
       titleScreen.classList.remove('visible');
+      titleScreen.inert = true;
       overScreen.classList.remove('visible');
+      overScreen.inert = true;
       hud.classList.add('visible');
     }
 
@@ -266,8 +507,13 @@
       const isRecord = score > best;
       if (isRecord) {
         best = score;
-        localStorage.setItem(BEST_KEY, best);
+        writeLocal(BEST_KEY, best);
       }
+      pendingScore = score > 0 ? { id: crypto.randomUUID(), score } : null;
+      scoreForm.hidden = !pendingScore;
+      submitScore.disabled = false;
+      playerName.disabled = false;
+      submitStatus.textContent = '';
       overScore.textContent = score;
       overRecord.textContent = isRecord && score > 0
         ? '🎉 Nouveau record !'
@@ -275,21 +521,26 @@
       setTimeout(() => {
         hud.classList.remove('visible');
         overScreen.classList.add('visible');
+        overScreen.inert = false;
+        overScreen.scrollTop = 0;
         inputLocked = false;
       }, 700);
     }
 
     function onTap(e) {
-      if (e && e.target && e.target.closest && e.target.closest('a')) return;
-      if (inputLocked) return;
+      if (e?.target?.closest?.('a, button, input, form, dialog, [data-game-ui]')) return;
+      if (inputLocked || leaderboard.open) return;
       if (state === 'playing') drop();
       else newGame();
     }
+    document.getElementById('play').addEventListener('click', newGame);
+    document.getElementById('replay').addEventListener('click', newGame);
     window.addEventListener('pointerdown', onTap);
     window.addEventListener('keydown', (e) => {
+      if (e.target.closest?.('a, button, input, form, dialog') || leaderboard.open) return;
       if (e.code === 'Space' || e.code === 'Enter') {
         e.preventDefault();
-        onTap();
+        if (!e.repeat) onTap(e);
       }
     });
 
