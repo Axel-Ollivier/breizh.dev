@@ -8,6 +8,7 @@ Pass --mock-only to exercise the UI against a static HTTP server.
 import asyncio
 import json
 import os
+from pathlib import Path
 import re
 import sys
 import uuid
@@ -119,6 +120,8 @@ async def outside_top100_and_mobile(page):
 
     async def handle(route):
         assert f"id={own_id}" in route.request.url
+        # Exercise the loading state on every reopening, including on fast runners.
+        await asyncio.sleep(0.25)
         await fulfill(route, {"entries": entries, "total": 102, "rank": 101})
 
     await page.route(API, handle)
@@ -130,6 +133,8 @@ async def outside_top100_and_mobile(page):
     await expect(page.locator("#leaderboard-list img")).to_have_count(0)
     for viewport in [{"width": 375, "height": 667}, {"width": 667, "height": 320}]:
         await page.set_viewport_size(viewport)
+        # A visible dialog may still be empty while its new request is pending.
+        await expect(page.locator("#leaderboard-list li")).to_have_count(100)
         assert await page.locator("#leaderboard").evaluate("el => el.scrollHeight > el.clientHeight")
         await page.locator("#leaderboard-list li").last.scroll_into_view_if_needed()
         await expect(page.locator("#leaderboard-list li").last).to_be_in_viewport()
@@ -261,9 +266,24 @@ async def main():
                 page = await context.new_page()
                 errors = []
                 page.on("pageerror", lambda error: errors.append(str(error)))
-                await test(page)
-                assert not errors, f"Uncaught browser errors: {errors}"
-                await context.close()
+                await context.tracing.start(screenshots=True, snapshots=True, sources=True)
+                try:
+                    await test(page)
+                    assert not errors, f"Uncaught browser errors: {errors}"
+                except Exception:
+                    results = Path(__file__).with_name("test-results")
+                    results.mkdir(exist_ok=True)
+                    try:
+                        await page.screenshot(path=results / f"{test.__name__}.png", full_page=True)
+                    except Exception as error:
+                        print(f"Screenshot unavailable: {error}", file=sys.stderr)
+                    try:
+                        await context.tracing.stop(path=results / f"{test.__name__}-trace.zip")
+                    except Exception as error:
+                        print(f"Trace unavailable: {error}", file=sys.stderr)
+                    raise
+                finally:
+                    await context.close()
                 print(f"PASS {test.__name__}", flush=True)
         finally:
             await browser.close()

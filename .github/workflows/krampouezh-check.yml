@@ -53,6 +53,7 @@ jobs:
           name: krampouezh-test-results
           path: |
             apps/krampouezh/server.tests/TestResults/*.trx
+            apps/krampouezh/test-results/
             ${{ runner.temp }}/krampouezh-server.log
 
   container:
