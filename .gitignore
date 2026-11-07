@@ -50,3 +50,6 @@ apps/krampouezh/server/data/
 apps/krampouezh/server.tests/TestResults/
 apps/krampouezh/test-results/
 apps/krampouezh/__pycache__/
+
+## CI script artifacts
+.github/scripts/__pycache__/

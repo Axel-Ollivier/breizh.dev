@@ -1,20 +1,6 @@
 name: Bingo checks
 
 on:
-  push:
-    branches: [feat/bingo-multiplayer]
-    paths:
-      - 'apps/bingo/**'
-      - 'docker-compose.prod.yml'
-      - '.github/workflows/bingo-check.yml'
-      - '.github/workflows/deploy.yml'
-  pull_request:
-    branches: [main]
-    paths:
-      - 'apps/bingo/**'
-      - 'docker-compose.prod.yml'
-      - '.github/workflows/bingo-check.yml'
-      - '.github/workflows/deploy.yml'
   workflow_call:
 
 permissions:

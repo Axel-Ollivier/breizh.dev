@@ -1,61 +1,78 @@
-name: Deploy
+name: CI / Deploy
 
 on:
   push:
     branches:
       - main
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
 
 env:
   REGISTRY: ghcr.io
   APP_DIR: /apps/breizhdev
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+      services: ${{ steps.plan.outputs.services }}
+      has_changes: ${{ steps.plan.outputs.has_changes }}
+      bingo: ${{ steps.plan.outputs.bingo }}
+      krampouezh: ${{ steps.plan.outputs.krampouezh }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Test app selection
+        run: python3 -m unittest discover -s .github/scripts -p 'test_*.py'
+      - name: Select affected apps
+        id: plan
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_REF: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD_REF: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          if [ "$EVENT_NAME" = pull_request ]; then
+            BASE_REF=$(git merge-base "$BASE_REF" "$HEAD_REF")
+          fi
+          python3 .github/scripts/deploy_plan.py --base "$BASE_REF" --head "$HEAD_REF"
+
   check-bingo:
+    needs: changes
+    if: needs.changes.outputs.bingo == 'true'
     uses: ./.github/workflows/bingo-check.yml
 
   check-krampouezh:
+    needs: changes
+    if: needs.changes.outputs.krampouezh == 'true'
     uses: ./.github/workflows/krampouezh-check.yml
 
   build-and-push:
     runs-on: ubuntu-latest
-    needs: [check-bingo, check-krampouezh]
+    needs: [changes, check-bingo, check-krampouezh]
+    # A suite skipped because its app is unchanged must not block other apps.
+    if: >-
+      ${{ !cancelled() && needs.changes.result == 'success' &&
+          needs.changes.outputs.has_changes == 'true' &&
+          (needs.check-bingo.result == 'success' || needs.check-bingo.result == 'skipped') &&
+          (needs.check-krampouezh.result == 'success' || needs.check-krampouezh.result == 'skipped') }}
     permissions:
       contents: read
       packages: write
 
     strategy:
-      matrix:
-        include:
-          - name: breizhdev
-            context: .
-            dockerfile: Dockerfile
-          - name: prout
-            context: apps/prout
-            dockerfile: apps/prout/Dockerfile
-          - name: krampouezh
-            context: apps/krampouezh
-            dockerfile: apps/krampouezh/Dockerfile
-          - name: awen
-            context: apps/awen
-            dockerfile: apps/awen/Dockerfile
-          - name: riboul
-            context: apps/riboul
-            dockerfile: apps/riboul/Dockerfile
-          - name: idle-consulting
-            context: apps/idle-consulting
-            dockerfile: apps/idle-consulting/Dockerfile
-          - name: bingo-frontend
-            context: apps/bingo/frontend
-            dockerfile: apps/bingo/frontend/Dockerfile
-          - name: bingo-backend
-            context: apps/bingo/backend
-            dockerfile: apps/bingo/backend/Dockerfile
+      matrix: ${{ fromJSON(needs.changes.outputs.matrix) }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Log in to GitHub Container Registry
+        if: github.event_name == 'push'
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
@@ -74,14 +91,19 @@ jobs:
         with:
           context: ${{ matrix.context }}
           file: ${{ matrix.dockerfile }}
-          push: true
+          push: ${{ github.event_name == 'push' }}
           tags: |
             ${{ steps.meta.outputs.tag }}
             ${{ steps.meta.outputs.sha }}
 
   deploy:
     runs-on: ubuntu-latest
-    needs: build-and-push
+    needs: [changes, build-and-push]
+    if: >-
+      ${{ !cancelled() && github.event_name == 'push' &&
+          needs.changes.result == 'success' && needs.build-and-push.result == 'success' }}
+    env:
+      SERVICES: ${{ needs.changes.outputs.services }}
 
     steps:
       - name: Checkout
@@ -108,8 +130,8 @@ jobs:
             ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
             "echo '${{ secrets.GHCR_TOKEN }}' | docker login ghcr.io -u ${{ github.actor }} --password-stdin && \
              cd ${{ env.APP_DIR }} && \
-             docker compose -f docker-compose.prod.yml pull && \
-             docker compose -f docker-compose.prod.yml up -d && \
+             docker compose -f docker-compose.prod.yml pull $SERVICES && \
+             docker compose -f docker-compose.prod.yml up -d --no-deps $SERVICES && \
              docker logout ghcr.io"
 
       - name: Cleanup SSH key
