@@ -1,20 +1,6 @@
 name: Krampouezh checks
 
 on:
-  push:
-    branches: [feat/krampouezh-leaderboard]
-    paths:
-      - 'apps/krampouezh/**'
-      - 'docker-compose.prod.yml'
-      - '.github/workflows/krampouezh-check.yml'
-      - '.github/workflows/deploy.yml'
-  pull_request:
-    branches: [main]
-    paths:
-      - 'apps/krampouezh/**'
-      - 'docker-compose.prod.yml'
-      - '.github/workflows/krampouezh-check.yml'
-      - '.github/workflows/deploy.yml'
   workflow_call:
 
 permissions:

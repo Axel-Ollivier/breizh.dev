@@ -121,17 +121,40 @@ apps/
 1. Créer `apps/<nom>/` avec le code de l'app et un `Dockerfile`.
 2. Ajouter un service dans `docker-compose.prod.yml` avec les labels Traefik
    (`Host(\`<nom>.breizh.dev\`)` + port interne du conteneur).
-3. Ajouter une entrée dans la matrice `build-and-push` du workflow
-   `.github/workflows/deploy.yml` (`name` / `context` / `dockerfile`).
+3. Ajouter l’app dans `.github/scripts/deploy_plan.py` avec son image, son contexte
+   de build, son Dockerfile et le nom de son service Compose.
 4. Faire pointer le DNS `<nom>.breizh.dev` vers le serveur.
 
 ## Déploiement
 
-Le déploiement est automatisé via GitHub Actions. Un push sur `main` déclenche :
+Le workflow `CI / Deploy` détecte les applications touchées sur l’ensemble du push
+vers `main`, ou depuis le point de divergence d’une pull request. Il appelle les
+vérifications Bingo et Krampouezh uniquement lorsqu’elles sont concernées, puis
+construit les images sélectionnées.
 
-1. Build de l'image Docker
-2. Push sur GitHub Container Registry (`ghcr.io`)
-3. Déploiement sur le serveur distant via SSH (docker pull + run)
+Sur une pull request, les images sont seulement construites. Sur `main`, elles
+sont publiées sur GHCR et seuls les services sélectionnés sont mis à jour par
+SSH (`docker compose pull` puis `up -d --no-deps`).
+
+| Modification | Vérifications et images concernées |
+|---|---|
+| `apps/krampouezh/` | Krampouezh uniquement |
+| `apps/bingo/` | Bingo, frontend et backend |
+| `src/BreizhDev/`, `Dockerfile` ou `.dockerignore` racine | Site principal |
+| Une autre mini app | Cette app uniquement |
+| Compose, workflow de déploiement ou sélecteur commun | Toutes les apps |
+| Documentation seule | Aucun build ni déploiement |
+
+Les workflows `bingo-check.yml` et `krampouezh-check.yml` sont appelés par le
+workflow parent ; ils n’ont pas de déclencheurs indépendants. Un contrôle sauté
+parce qu’une app n’a pas changé ne bloque pas les autres apps. Un contrôle en
+échec bloque la publication et le déploiement.
+
+Les tests du sélecteur s’exécutent dans le job `changes`, et localement avec :
+
+```bash
+python3 -m unittest discover -s .github/scripts -p 'test_*.py'
+```
 
 ### Configuration requise
 
